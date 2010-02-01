@@ -19,6 +19,8 @@ VERSION = 0.7
 PARALLEL = 32 # try reducing this number if you get "Too many open files" exception
 NAME = "conntest.py"
 
+ERR_IN_USE = [98, 10048]
+
 PROTOCOL = {
 	'tcp': [socket.SOCK_STREAM,  lambda x: x.accept()[0]  ],
 	'udp': [socket.SOCK_DGRAM,   lambda x: x              ],
@@ -129,7 +131,7 @@ def run_client(rhost, rport, basepath=None):
 		try:
 			sock = sock_open(type, rhost, port, True)
 		except socket.error, e:
-			if e[0] != 98 and e[0] != 10048:
+			if e[0] not in ERR_IN_USE:
 				raise
 			print_flush("skipping test on %s port %s since it is already in use" % (type, port))
 			cbRequestEnd()
@@ -177,15 +179,18 @@ def run_client(rhost, rport, basepath=None):
 
 
 def get_start_port():
-	try:
-		sock = sock_open('tcp', '', 1023, True)
-		sock.close()
-		return 0
-	except socket.error, e:
-		if e[0] != 13: # Operation not permitted
-			raise
-		else:
-			return 1024
+	for port in range(1, 1024):
+		try:
+			sock = sock_open('tcp', '', port, True)
+			sock.close()
+			return 0
+		except socket.error, e:
+			if e[0] == 13: # Operation not permitted
+				return 1024
+			elif e[0] in ERR_IN_USE:
+				continue
+			else:
+				raise
 
 
 if __name__ == '__main__':
