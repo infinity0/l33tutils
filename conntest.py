@@ -17,6 +17,7 @@ from twisted.web.http_headers import Headers
 DEFAULT_PORT = 8080
 VERSION = 0.7
 PARALLEL = 32 # try reducing this number if you get "Too many open files" exception
+NAME = "conntest.py"
 
 PROTOCOL = {
 	'tcp': [socket.SOCK_STREAM,  lambda x: x.accept()[0]  ],
@@ -135,7 +136,7 @@ def run_client(rhost, rport, basepath=None):
 			return
 
 		d = Agent(reactor).request('GET', '%s/%s/%s' % (dom, type, port),
-		    Headers({'User-Agent': ['Connection Tester %s' % VERSION], 'Connection': 'close'}), None)
+		    Headers({'User-Agent': ['%s/%s' % (NAME, VERSION)], 'Connection': 'close'}), None)
 
 		def cbResponse(response):
 			if response.code == 200:
@@ -192,25 +193,25 @@ if __name__ == '__main__':
 	from optparse import OptionParser, OptionGroup, IndentedHelpFormatter
 	config = OptionParser(
 	  usage = "Usage: %prog [OPTIONS] [HOST] [PORT]",
-	  description = "Requests the conntest.py server at HOST:PORT to send test packets to the "
-	                "local host, reporting the packets that come through. If HOST is omitted, "
-	                "runs a server (based on TwistedWeb) to serve requests from conntest.py "
-	                "clients. The server-client protocol is HTTP-based, so it should be able "
-	                "to get around the vast majority of network firewalls, as long as the "
-	                "server is running on an inconspicuous TCP port (8080 by default).",
+	  description = "Requests the %s server at HOST:PORT to send test packets to the local "
+	                "host, reporting the packets that come through. If HOST is omitted, runs a "
+	                "server (based on TwistedWeb) to serve requests from %s clients. The "
+	                "server-client protocol is HTTP-based, so it should be able to get around "
+	                "the vast majority of network firewalls, as long as the server is running "
+	                "on an inconspicuous TCP port (8080 by default)." % (NAME, NAME),
 	  version = VERSION,
 	  formatter = IndentedHelpFormatter(max_help_position=25)
 	)
 
 	config.add_option("-m", "--pmax", type="int", metavar="REQ", default=32,
-	  help="maximum number of parallel requests, 32 by default. Higher values will "
-	       "make the test run quicker, but you may run into OS limits which will cause "
-	       "some requests to hang/abort, eg. \"too many open files\". Experiment a "
-	       "little to find the optimal value for your system.")
+	  help = "maximum number of parallel requests, 32 by default. Higher values will "
+	         "make the test run quicker, but you may run into OS limits which will cause "
+	         "some requests to hang/abort, eg. \"too many open files\". Experiment a "
+	         "little to find the optimal value for your system.")
 	config.add_option("-b", "--bpath", type="string", metavar="PATH", default='',
-	  help="this gives the PATH to the conntest.py script on the remote server. by "
-	       "default, we assume the remote server is the TwistedWeb-based standalone "
-	       "server, and so we use an empty string for this.")
+	  help = "this gives the PATH to the %s script on the remote server. by default, we "
+	         "assume the remote server is the TwistedWeb-based standalone server, and so "
+	         "we use an empty string for this." % NAME)
 
 	(opts, args) = config.parse_args()
 
