@@ -5,26 +5,26 @@ import sys
 a = 'pyfgcrlaoeuidhtnsqjkxbmwvz1234567890PYFGCRLAOEUIDHTNSQJKXBMWVZ'
 
 def next():
-	global a, l, i, str, pos
-	if len(str) == l-1:
+	global a, l, i, ss, pos
+	if len(ss) == l-1:
 		while i == len(a):
 			i = pos.pop()
-			str = str[:-1]
+			ss = ss[:-1]
 			i+=1
-	while len(str) != l-1:
+	while len(ss) != l-1:
 		pos.append(i)
-		str += a[i]
+		ss += a[i]
 		i = 0
-	s = str + a[i]
+	s = ss + a[i]
 	i+=1
 	return s
 
 
 def run(ll, ii, yy):
-	global a, l, i, str, pos
+	global a, l, i, ss, pos
 	l = int(ll)
 	i = int(ii)
-	str = ''
+	ss = ''
 	pos = []
 
 	if l <= 0 or i < 0:
@@ -33,11 +33,11 @@ def run(ll, ii, yy):
 	while i > len(a):
 		k, i = divmod(i, len(a))
 		pos.append(k)
-		str += a[k]
+		ss += a[k]
 
 	while len(pos) < l-1:
 		pos.insert(0, 0)
-		str = a[0] + str
+		ss = a[0] + ss
 
 	for j in range(int(yy)):
 		print next(),
