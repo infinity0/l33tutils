@@ -38,7 +38,7 @@ def print_flush_log(s):
 	sys.stdout.flush()
 
 
-def sock_open(type, host, port, bind):
+def sock_open(host, type, port, bind):
 	sock = socket.socket(socket.AF_INET, PROTOCOL[type][0])
 	sock.setblocking(0)
 	try:
@@ -72,8 +72,8 @@ class counter():
 		return port
 
 
-def start_connect(type, host, port, delay):
-	sock = sock_open(type, host, port, False)
+def start_connect(host, type, port, delay):
+	sock = sock_open(host, type, port, False)
 
 	def cbSend():
 		try:
@@ -106,7 +106,7 @@ def run_standalone_server(listen):
 			except ValueError:
 				return self.r404.render(request)
 			else:
-				handle_request(type, host, port, reactor.callLater)
+				start_connect(host, type, port, reactor.callLater)
 				return "awaiting connection to %s %s %s" % (host, type, port)
 
 	reactor.listenTCP(listen, Site(Server()))
@@ -120,13 +120,13 @@ def run_client(rhost, rport, basepath=None):
 	ports = dict([(k, counter(s)) for k in PROTOCOL.iterkeys()])
 	finis = dict([(k, counter(s+1)) for k in PROTOCOL.iterkeys()])
 
-	def request_send(type, rhost, port):
+	def request_send(rhost, type, port):
 
 		def cbRequestEnd():
 			fini = finis[type].nextport()
 			next = ports[type].nextport()
 			if (next > 0):
-				request_send(type, rhost, next)
+				request_send(rhost, type, next)
 			else:
 				for pc in finis.itervalues():
 					if pc.port >= 0:
@@ -139,7 +139,7 @@ def run_client(rhost, rport, basepath=None):
 					pass
 
 		try:
-			sock = sock_open(type, rhost, port, True)
+			sock = sock_open(rhost, type, port, True)
 		except socket.error, e:
 			if e[0] not in ERR_IN_USE:
 				raise
@@ -183,7 +183,7 @@ def run_client(rhost, rport, basepath=None):
 
 	for port in range(0, PARALLEL):
 		for k in PROTOCOL.iterkeys():
-			request_send(k, rhost, ports[k].nextport())
+			request_send(rhost, k, ports[k].nextport())
 
 	reactor.run()
 
@@ -191,7 +191,7 @@ def run_client(rhost, rport, basepath=None):
 def get_start_port():
 	for port in range(1, 1024):
 		try:
-			sock = sock_open('tcp', '', port, True)
+			sock = sock_open('', 'tcp', port, True)
 			sock.close()
 			return 0
 		except socket.error, e:
