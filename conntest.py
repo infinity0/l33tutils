@@ -9,8 +9,9 @@ able to invoke a callback 1s after giving a reply back to the httpd
 """
 
 import sys, socket, threading, time
-from twisted.web import server, resource
 from twisted.internet import reactor
+from twisted.web.resource import Resource, NoResource
+from twisted.web.server import Site
 from twisted.web.client import Agent
 from twisted.web.http_headers import Headers
 
@@ -71,11 +72,7 @@ class counter():
 		return port
 
 
-def handle_request(host, path, delay):
-	print_flush_log("R %s %s" % (host, path))
-
-	(tmp, type, port) = path.split('/', 2)
-	port = int(port)
+def start_connect(type, host, port, delay):
 	sock = sock_open(type, host, port, False)
 
 	def cbSend():
@@ -88,18 +85,31 @@ def handle_request(host, path, delay):
 			sock.close()
 
 	delay(1, cbSend)
-	return "awaiting connection to %s %s %s" % (host, type, port)
 
 
 def run_standalone_server(listen):
 
-	class Server(resource.Resource):
-		isLeaf = True
+	class Server(Resource):
+
+		def __init__(self):
+			Resource.__init__(self)
+			self.isLeaf = True
+			self.r404 = NoResource()
 
 		def render_GET(self, request):
-			return handle_request(request.client.host, request.path, reactor.callLater)
+			host, path = request.client.host, request.path
+			print_flush_log("R %s %s" % (host, path))
 
-	reactor.listenTCP(listen, server.Site(Server()))
+			try:
+				type, port = path[1:].split('/', 2)
+				port = int(port)
+			except ValueError:
+				return self.r404.render(request)
+			else:
+				handle_request(type, host, port, reactor.callLater)
+				return "awaiting connection to %s %s %s" % (host, type, port)
+
+	reactor.listenTCP(listen, Site(Server()))
 	reactor.run()
 
 
