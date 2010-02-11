@@ -148,7 +148,7 @@ def run_client(rhost, rport, basepath=None):
 			return
 
 		d = Agent(reactor).request('GET', '%s/%s/%s' % (dom, type, port),
-		    Headers({'User-Agent': ['%s/%s' % (NAME, VERSION)], 'Connection': 'close'}), None)
+		    Headers({'User-Agent': ['%s/%s' % (NAME, VERSION)]}), None)
 
 		def cbResponse(response):
 			if response.code == 200:
