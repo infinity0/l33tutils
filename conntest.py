@@ -2,11 +2,13 @@
 
 """
 Copyright (C) 2010  Ximin Luo <xl269@cam.ac.uk>
-Released under GPLv3 or later. See http://www.gnu.org/ for details.
+Released under GNU AGPLv3 or later. See http://www.gnu.org/ for details.
+"""
 
+'''
 TODO: Make a fastCGI version of this. It must be fastCGI because we need to be
 able to invoke a callback 1s after giving a reply back to the httpd
-"""
+'''
 
 import sys, socket, threading, time
 from twisted.internet import reactor
@@ -19,6 +21,7 @@ DEFAULT_PORT = 8080
 VERSION = 0.7
 PARALLEL = 32 # try reducing this number if you get "Too many open files" exception
 NAME = "conntest.py"
+FNAME = NAME
 
 ERR_IN_USE = [98, 10048]
 
@@ -96,15 +99,43 @@ def run_standalone_server(listen):
 			self.isLeaf = True
 			self.r404 = NoResource()
 
+			fp = file(sys.argv[0])
+			self.src = fp.read()
+			fp.close()
+
+			from subprocess import PIPE, Popen
+			self.src_syn = Popen(['pandoc', '-s'], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate("~~~~ {.python}\n" + self.src + "~~~~\n")[0]
+
 		def render_GET(self, request):
 			host, path = request.client.host, request.path
 			print_flush_log("R %s %s" % (host, path))
+			request.setHeader("content-type", "text/plain")
+
+			if path == "/":
+				return "%s %s\n%s\n/tcp/[port]\n/udp/[port]\n/src/\n/src/raw\n/src/get\n" % (NAME, VERSION, __doc__)
 
 			try:
 				type, port = path[1:].split('/', 2)
+
+				if type == "src":
+					if port == "raw":
+						return self.src
+					elif port == "get":
+						request.setHeader("content-type", "text/x-python")
+						request.setHeader("content-disposition", "attachment; filename=\"%s\"" % FNAME);
+						return self.src
+					else:
+						request.setHeader("content-type", "text/html")
+						return self.src_syn
+
+				elif type not in PROTOCOL:
+					raise KeyError
+
 				port = int(port)
-			except ValueError:
+
+			except ValueError, KeyError:
 				return self.r404.render(request)
+
 			else:
 				start_connect(host, type, port, reactor.callLater)
 				return "awaiting connection to %s %s %s" % (host, type, port)
