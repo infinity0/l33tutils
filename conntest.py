@@ -104,7 +104,11 @@ def run_standalone_server(listen):
 			fp.close()
 
 			from subprocess import PIPE, Popen
-			self.src_syn = Popen(['pandoc', '-s'], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate("~~~~ {.python}\n" + self.src + "~~~~\n")[0]
+			try:
+				self.src_syn = Popen(['pandoc', '-s'], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate("~~~~ {.python}\n" + self.src + "~~~~\n")[0]
+			except OSError:
+				sys.stderr.write("pandoc not found; /src/ will default to plain text rather than syntax highlighted code\n")
+				self.src_syn = None
 
 		def render_GET(self, request):
 			host, path = request.client.host, request.path
@@ -124,9 +128,11 @@ def run_standalone_server(listen):
 						request.setHeader("content-type", "text/x-python")
 						request.setHeader("content-disposition", "attachment; filename=\"%s\"" % FNAME);
 						return self.src
-					else:
+					elif self.src_syn is not None:
 						request.setHeader("content-type", "text/html")
 						return self.src_syn
+					else:
+						return self.src
 
 				elif type not in PROTOCOL:
 					raise KeyError
