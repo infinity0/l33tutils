@@ -18,7 +18,7 @@ from twisted.web.client import Agent
 from twisted.web.http_headers import Headers
 
 DEFAULT_PORT = 8080
-VERSION = 0.7
+VERSION = 0.8
 PARALLEL = 32 # try reducing this number if you get "Too many open files" exception
 NAME = "conntest.py"
 FNAME = NAME
@@ -139,7 +139,7 @@ def run_standalone_server(listen):
 
 				port = int(port)
 
-			except ValueError, KeyError:
+			except (ValueError, KeyError):
 				return self.r404.render(request)
 
 			else:
