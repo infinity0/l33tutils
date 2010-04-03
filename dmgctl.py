@@ -65,30 +65,35 @@ def print_flush_log(s):
 	sys.stdout.flush()
 
 
-def run_standalone_server(listen, allowed):
+class Server(Resource):
 
-	class Server(Resource):
+	def __init__(self, allowed=[], msgfile=None):
+		Resource.__init__(self)
+		self.isLeaf = True
+		self.r404 = NoResource()
+		self.allowed = list(allowed)
+		self.msgfile = msgfile
 
-		def __init__(self, allowed=[]):
-			Resource.__init__(self)
-			self.isLeaf = True
-			self.r404 = NoResource()
-			self.allowed = list(allowed)
-			for cidr in allowed: IPv4Match("0.0.0.0", cidr) # make sure all valid
-			print_flush("# redirection server initialised at %.4f" % time.time())
-			print_flush("# allowed subnets = %r" % self.allowed)
+		for cidr in allowed: IPv4Match("0.0.0.0", cidr) # make sure all valid
+		print_flush("# redirection server initialised at %.4f" % time.time())
+		print_flush("# allowed subnets = %r" % self.allowed)
 
-		def render_GET(self, request):
-			host, path = request.client.host, request.path
-			print_flush_log("R %s %s" % (host, path))
+	def render_GET(self, request):
+		host, path = request.client.host, request.path
+		print_flush_log("R %s %s" % (host, path))
 
-			if any(IPv4Match(host, range) for range in self.allowed):
-				# TODO something more sophisticated, like forwarding the request
-				return "You're OK"
-			return '<meta http-equiv="refresh" content="0;url=http://www.meatspin.com/" />'
+		if any(IPv4Match(host, range) for range in self.allowed):
+			# TODO something more sophisticated, like forwarding the request
+			try:
+				fp = open(self.msgfile)
+				try:
+					return fp.read()
+				finally:
+					fp.close()
+			except:
+				return "You're OK (%s)" % host
 
-	reactor.listenTCP(listen, Site(Server(allowed)))
-	reactor.run()
+		return '<meta http-equiv="refresh" content="0;url=http://www.meatspin.com/" />'
 
 
 if __name__ == '__main__':
@@ -103,6 +108,8 @@ if __name__ == '__main__':
 
 	config.add_option("-a", "--allowed", type="string", metavar="ALLOWED", default=None,
 	  help = "file to read allowed CIDR subnets from, 1 per line")
+	config.add_option("-f", "--msgfile", type="string", metavar="MSGFILE", default=None,
+	  help = "file to output to allowed IPs (read once at startup)")
 
 	(opts, args) = config.parse_args()
 
@@ -111,9 +118,12 @@ if __name__ == '__main__':
 	allowed = [line.strip() for line in readlines(amsg, fp)]
 
 	if len(args) == 0:
-		run_standalone_server(DEFAULT_PORT, allowed)
+		port = DEFAULT_PORT
 	elif len(args) == 1:
-		run_standalone_server(int(args[0]), allowed)
+		port = int(args[0])
 	else:
 		config.print_help()
 		sys.exit(1)
+
+	reactor.listenTCP(port, Site(Server(allowed, opts.msgfile)))
+	reactor.run()
