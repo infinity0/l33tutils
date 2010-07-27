@@ -1,63 +1,62 @@
 #!/usr/bin/python
 
 import sys
+from itertools import count
+from array import array
 
-a = 'pyfgcrlaoeuidhtnsqjkxbmwvz1234567890PYFGCRLAOEUIDHTNSQJKXBMWVZ'
+AB_TEXT = 'pyfgcrlaoeuidhtnsqjkxbmwvz1234567890PYFGCRLAOEUIDHTNSQJKXBMWVZ'
+AB_ASCII = ''.join(chr(i) for i in xrange(32, 127))
 
-def next():
-	global a, l, i, ss, pos
-	if len(ss) == l-1:
-		while i == len(a):
-			i = pos.pop()
-			ss = ss[:-1]
-			i+=1
-	while len(ss) != l-1:
-		pos.append(i)
-		ss += a[i]
-		i = 0
-	s = ss + a[i]
-	i+=1
-	return s
+def intdefault(val, default):
+	if val is None:
+		return default
+	elif type(val) != int:
+		raise ValueError
+	elif val < 1:
+		return default
+	else:
+		return val
 
+def string_gen(blen=None, elen=None, alphabet=AB_ASCII):
 
-def run(ll, ii, yy):
-	global a, l, i, ss, pos
-	l = int(ll)
-	i = int(ii)
-	ss = ''
-	pos = []
+	blen = intdefault(blen, 1)
+	elen = intdefault(elen, None)
 
-	if l <= 0 or i < 0:
-		return
+	def gen(bytes, pos, length):
+		next = pos+1
+		if next == length:
+			for i in alphabet:
+				bytes[pos] = i
+				yield bytes
+		else:
+			for i in alphabet:
+				bytes[pos] = i
+				for bytes in gen(bytes, next, length):
+					yield bytes
 
-	while i > len(a):
-		k, i = divmod(i, len(a))
-		pos.append(k)
-		ss += a[k]
-
-	while len(pos) < l-1:
-		pos.insert(0, 0)
-		ss = a[0] + ss
-
-	for j in range(int(yy)):
-		print next(),
+	lenrange = count(blen) if elen is None else xrange(blen, elen)
+	for length in lenrange:
+		bytes = array('c')
+		bytes.fromstring(alphabet[0] * length);
+		for bytes in gen(bytes, 0, length):
+			yield bytes.tostring()
 
 
 def main(argv):
-	if len(argv) < 4 and (len(argv) < 2 or argv[1] != 'auto'):
-		print "Usage:   brute.py [length] [start] [items]"
-		print "         brute.py auto"
-		print "Generates alphanumeric sequences (dvorak keyboard)"
+	try:
+		try:
+			blen = int(argv[1]) if len(argv) > 1 else None
+			elen = int(argv[2]) if len(argv) > 2 else None
+		except ValueError:
+			raise SyntaxError
+
+		for string in string_gen(blen, elen):
+			print string,
+
+	except SyntaxError:
+		print >>sys.stderr, "Usage:   brute.py [base_length] [end_length]"
+		print >>sys.stderr, "Generates alphanumeric sequences (dvorak keyboard)"
 		sys.exit(2)
-
-	if argv[1] == 'auto':
-		il = 0;
-		while True:
-			run(il, 0, pow(len(a), il))
-			il+=1
-
-	else:
-		run(*argv[1:4])
 
 
 if __name__ == '__main__':
