@@ -1,0 +1,36 @@
+#!/bin/sh
+
+USAGE="Usage: $0 [-h|-v] <TUNNEL> [<PARAMS>]"
+VERBOSE=false
+
+case $1 in
+-v | --verbose )
+	VERBOSE=true
+	shift
+	;;
+-h | --help )
+	cat >&2 <<-EOF
+	$USAGE
+	Start an autossh tunnel, defined in ~/.ssh/presets
+
+	Options:
+	  -h, --help                 This help message.
+	  -v, --verbose              Show what is being executed.
+
+	EOF
+	exit
+	;;
+esac
+
+if [ -z "$1" ]; then echo >&2 "$USAGE"; exit 2; fi
+TUN="$1"
+shift
+
+line=$(grep -m1 "^$TUN" "$HOME/.ssh/presets")
+if [ -z "$line" ]; then echo >&2 "could not find \"$TUN\" in ~/.ssh/presets"; exit 1; fi
+
+args="${line#$TUN	}"
+
+if $VERBOSE; then for i in exec sh -c "exec autossh $args "'$@' -- "$@"; do echo -n "'$i' "; done; echo ""; fi
+if ! which autossh >/dev/null; then echo >&2 "need autossh installed"; exit 1; fi
+exec sh -c "exec autossh $args"'$@' -- "$@"
