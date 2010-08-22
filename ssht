@@ -33,4 +33,6 @@ args="${line#$TUN	}"
 
 if $VERBOSE; then for i in exec sh -c "exec autossh $args "'$@' -- "$@"; do echo -n "'$i' "; done; echo ""; fi
 if ! which autossh >/dev/null; then echo >&2 "need autossh installed"; exit 1; fi
+
+export AUTOSSH_LOGFILE="$HOME/.ssh/autossh.log"
 exec sh -c "exec autossh $args"'$@' -- "$@"
