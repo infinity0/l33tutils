@@ -18,12 +18,12 @@ while getopts 0125hd o; do
 		will not be touched; to force recalculation, remove the appropriate file. Extra
 		filters can be passed to find(1) by appending them after -- in the command line.
 
-		-h              This help text.
-		-d              Debug only; show what files would be hashed.
-		-0              Generate md5 sums in MD5SUMS
-		-1              Generate sha1 sums in SHA1SUMS
-		-2              Generate sha256 sums in SHA256SUMS
-		-5              Generate sha512 sums in SHA512SUMS
+		  -h            This help text.
+		  -d            Debug only; show what files would be hashed.
+		  -0            Generate md5 sums in MD5SUMS
+		  -1            Generate sha1 sums in SHA1SUMS
+		  -2            Generate sha256 sums in SHA256SUMS
+		  -5            Generate sha512 sums in SHA512SUMS
 		EOF
 		exit 1
 		;;
