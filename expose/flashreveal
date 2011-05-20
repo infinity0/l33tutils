@@ -1,15 +1,40 @@
 #!/bin/sh
 
-for fpid in $(pgrep -f libflashplayer.so); do
+MINMTIME=300
+MINFSIZE=1048576
+
+while getopts 't:s:' o; do
+	case $o in
+	t )	MINMTIME="$OPTARG";;
+	s )	MINFSIZE="$OPTARG";;
+	\? )	echo "$USAGE"; exit 2;;
+	esac
+done
+shift $(expr $OPTIND - 1)
+
+for fpid in $(pgrep -f libflashplayer.so) $(pgrep -f firefox); do
 	for ftmp in /proc/$fpid/fd/*; do
 		TARGET=$(readlink $ftmp);
-		#echo $TARGET
 		FNAME=${TARGET}
 		FNAME=${FNAME#/tmp/FlashXX}
 		if [ "$FNAME" = "$TARGET" ]; then continue; fi
 		FNAME=${FNAME% (deleted)}
 		if [ "$FNAME" = "$TARGET" ]; then continue; fi
-		echo "FlashXX$FNAME -> $ftmp"
-		cp -aH "$ftmp" "FlashXX$FNAME"
+		SINCE="$(expr $(date +%s) - $(date +%s -r "$ftmp"))"
+		SIZE="$(stat -L -c %s "$ftmp")"
+		if ! [ "$SINCE" -gt "$MINMTIME" -a "$SIZE" -gt "$MINFSIZE" ]; then continue; fi
+		COPYNAME="FlashXX$FNAME"
+		echo ">>> $ftmp"
+		while true; do
+			echo "copy $ftmp => $COPYNAME"
+			read -p  "[Y]es, [n]o, [p]review, [v]iew-and-skip, or type an alternative name: " x
+			case "$x" in
+			y|"" )	cp -iL "$ftmp" "$COPYNAME"; break;;
+			n )	break;;
+			p )	totem "$ftmp";;
+			v )	totem "$ftmp"; break;;
+			* )	COPYNAME="$x";;
+			esac
+		done
 	done
 done
