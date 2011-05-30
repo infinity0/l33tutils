@@ -1,0 +1,82 @@
+#!/bin/sh
+
+#if [ -n "$1" ]; then
+#  cd "$1" || exit 1
+#fi
+
+USELONGER=false
+
+get_svn_rev() {
+  git cat-file -p $1 | tail -n1 | sed -rn -e 's/git-svn-id: .*?@([0-9]+) .*?/\1/gp'
+}
+
+get_commit_sha1() {
+  grep -P '^[0-9a-f]{40} '"$1"'\b' "$2" | cut '-d ' -f1
+}
+
+suggest_grafts() {
+  GRAFTS="$1"
+  THIS_GRAFTS="$2"
+  if [ ! -f "$1" ]; then
+    echo >&2 "not a file: $1"
+    exit 1
+  fi
+  if [ ! -f "$2" ]; then
+    echo >&2 "first saving current grafts to $2"
+    save_grafts > "$2"
+  fi
+
+  for i in $(git rev-list --all); do
+    SVN_REV=$(get_svn_rev $i)
+    if [ -z "$SVN_REV" ]; then continue; fi
+
+    NEWGRAFT=$(grep -P '^[0-9a-f]{40} '"$SVN_REV"'\b' "$GRAFTS" | {
+      read SHA1 SVN_REV PARENTS
+      LINE="$i"; for i in $PARENTS; do LINE="$LINE $(get_commit_sha1 "$i" "$THIS_GRAFTS")"; done
+      echo $LINE
+    })
+
+    PARENTS=$(git cat-file -p "$i" | grep ^parent | cut '-d ' -f2) ## true parent commits
+    THISGRAFT="$i"; for i in $PARENTS; do THISGRAFT="$THISGRAFT $i"; done
+    if [ "$THISGRAFT" != "$NEWGRAFT" ]; then
+      if $USELONGER && [ "${#NEWGRAFT}" -gt "${#THISGRAFT}" ]; then
+        echo "$NEWGRAFT"
+      else
+        echo "$THISGRAFT"
+      fi
+    fi
+  done
+}
+
+save_grafts() {
+  for i in $(git rev-list --all); do
+    SVN_REV=$(get_svn_rev $i)
+    if [ -z "$SVN_REV" ]; then continue; fi
+    LINE="$i $SVN_REV"
+
+    PARENTS=$(git show --quiet --pretty=format:%P "$i")  ## grafted parent commits
+    for j in $PARENTS; do
+      LINE="$LINE $(get_svn_rev $j)"
+    done
+
+    echo "$LINE"
+  done
+}
+
+case $1 in
+save)
+  save_grafts
+  ;;
+suggest_longer)
+  USELONGER=true
+  suggest_grafts "$2" "$3"
+  ;;
+suggest_newer)
+  suggest_grafts "$2" "$3"
+  ;;
+*)
+  echo "Usage: $0 save > GRAFTS_FILE"
+  echo "       $0 {suggest_longer|suggest_newer} NEW_GRAFTS CUR_GRAFTS"
+  exit 2
+  ;;
+esac

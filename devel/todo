@@ -1,0 +1,56 @@
+#!/usr/bin/python
+"""Search for TODO tags (with author) in the source code."""
+
+import sys, re
+from subprocess import Popen, PIPE
+from getpass import getuser
+from cStringIO import StringIO
+
+if len(sys.argv) > 1:
+  user = sys.argv[1]
+else:
+  user = getuser()
+
+# TODO extract from env
+#ms=01;31:mc=01;31:sl=:cx=:fn=35:ln=32:bn=32:se=36
+GREP_MS="01;31"
+GREP_SE="36"
+
+RE_COLOR_P="(?:\033\[%sm(?:\033\[K)?)?"
+RE_COLOR_SEP=RE_COLOR_P % GREP_SE
+RE_COLOR_MATCH=RE_COLOR_P % GREP_MS
+RE_COLOR_CLOSE=RE_COLOR_P % ""
+
+GREP_PATTERN = "TODO(%s)\: [A-Z0-9_ ]*" % user
+RE_PATTERN = "%sTODO\(%s\): ([A-Z0-9_ ]*)%s " % (RE_COLOR_MATCH, getuser(), RE_COLOR_CLOSE)
+RE_MATCHSEP = "%s:%s" % (RE_COLOR_SEP, RE_COLOR_CLOSE)
+
+FMT_WRAP = "\033[%sm\033[K"
+FMT_MATCH = FMT_WRAP % "01;31"
+FMT_CLOSE = FMT_WRAP % ""
+
+proc = Popen("grep --color=always -R --binary-files=without-match".split() + [GREP_PATTERN, "."], stdout=PIPE)
+stdout, stderr = proc.communicate()
+retcode = proc.wait()
+if retcode != 0: sys.exit(retcode)
+
+def get_prio_key(item):
+  return item
+
+unrec = 0
+todo = []
+for line in StringIO(stdout):
+  file, match = re.split(RE_MATCHSEP, line, 1)
+  try:
+    pad, prio, detail = re.split(RE_PATTERN, match, 1)
+    todo.append((prio, file, detail))
+  except ValueError:
+    print line,
+    unrec += 1
+
+todo.sort(key=get_prio_key, reverse=True)
+
+for item in todo:
+  prio, file, detail = item
+  print "%s%s%s" % (FMT_MATCH, prio, FMT_CLOSE), file, detail,
+print "Total: %s%s" % (len(todo), " + %s w/o tag" % unrec if unrec else "")

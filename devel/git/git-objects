@@ -1,0 +1,22 @@
+#!/bin/sh
+
+if [ ! -d "$1" ]; then
+	echo >&2 "abort: $1 not a directory"
+	return 1
+elif [ -d "$1/.git" ]; then
+	GIT_OBJ=$(readlink -f "$1/.git/objects")
+elif [ -d "$1/objects" ]; then
+	GIT_OBJ=$(readlink -f "$1/objects")
+fi
+
+rm -rf .git-objects && mkdir .git-objects && cd .git-objects
+git init --bare
+for i in "$GIT_OBJ"/pack/*.pack; do
+	git unpack-objects < "$i"
+done
+
+mkdir objects-plain && cd objects
+for i in ??/*; do
+	mkdir -p "../objects-plain/$i" && rmdir "../objects-plain/$i"
+	python -c 'import zlib; print zlib.decompress(open("'$i'").read())' > "../objects-plain/$i"
+done

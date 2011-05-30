@@ -1,0 +1,10 @@
+#!/bin/sh
+case "$1" in
+show)
+	commits=$("$0")
+	for i in $commits; do git show --quiet --parents $i; done
+	;;
+*)
+	git log --parents --all | grep -i -B5 '^ .*\(bring\|merg\)' | grep '^commit [0-9a-f]\{40\} [0-9a-f]\{40\}$' | cut '-d ' -f2
+	;;
+esac

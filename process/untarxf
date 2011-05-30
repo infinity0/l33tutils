@@ -1,0 +1,6 @@
+#!/bin/sh
+# Remove the output of an accidental `tar xf`.
+for i in $(tar --quoting-style=literal -tf "$@" | sort -r); do
+	if [ -d "$i" ]; then rmdir "$i";
+	else rm "$i"; fi
+done
