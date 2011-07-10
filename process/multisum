@@ -1,0 +1,48 @@
+#!/bin/sh
+# Download a file from different locations and checksums them from each.
+# Useful if a remote file doesn't have a published checksum, or a weak one.
+# (cough cough, android sdk).
+#
+# Security is dependant on your remote hosts being unlikely to be all under
+# MITM attack by the same attacker. i.e., more geographically diverse hosts =>
+# more security.
+#
+
+TARGET="$1"
+shift
+
+sum() {
+	SUM=$("$@")
+	echo "$SUM"
+	SUM=$(echo "$SUM" | cut '-d ' -f1)
+}
+
+TEMP=$(tempfile)
+trap 'rm '"$TEMP" EXIT INT TERM KILL
+
+wget "$TARGET" -O "$TEMP"
+sum md5sum "$TEMP"; MD5SUM="$SUM"
+sum sha1sum "$TEMP"; SHA1SUM="$SUM"
+sum sha256sum "$TEMP"; SHA256SUM="$SUM"
+
+echo "now running on remote hosts."
+echo "errors will be explicitly reported; no news is good news."
+
+for remote in "$@"; do
+ssh "$remote" sh <<EOF
+test_sum() {
+EXPECT="\$1"
+ACTUAL=\$("\$2" "\$3" | cut '-d ' -f1)
+if [ "\$EXPECT" != "\$ACTUAL" ]; then
+	echo "\$2 mismatch: \$EXPECT != \$ACTUAL"
+fi
+}
+
+TEMP=\$(tempfile)
+trap 'rm '"\$TEMP" EXIT INT TERM KILL
+wget -nv "$TARGET" -O "\$TEMP"
+test_sum "$MD5SUM" md5sum "\$TEMP"
+test_sum "$SHA1SUM" sha1sum "\$TEMP"
+test_sum "$SHA256SUM" sha256sum "\$TEMP"
+EOF
+done
