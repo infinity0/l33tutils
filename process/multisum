@@ -17,13 +17,11 @@ sum() {
 	SUM=$(echo "$SUM" | cut '-d ' -f1)
 }
 
-TEMP=$(tempfile)
-trap 'rm '"$TEMP" EXIT INT TERM KILL
-
-wget "$TARGET" -O "$TEMP"
-sum md5sum "$TEMP"; MD5SUM="$SUM"
-sum sha1sum "$TEMP"; SHA1SUM="$SUM"
-sum sha256sum "$TEMP"; SHA256SUM="$SUM"
+DST=$(basename "$TARGET")
+wget "$TARGET" -O "$DST"
+sum md5sum "$DST"; MD5SUM="$SUM"
+sum sha1sum "$DST"; SHA1SUM="$SUM"
+sum sha256sum "$DST"; SHA256SUM="$SUM"
 
 echo "now running on remote hosts."
 echo "errors will be explicitly reported; no news is good news."
@@ -39,7 +37,7 @@ fi
 }
 
 TEMP=\$(tempfile)
-trap 'rm '"\$TEMP" EXIT INT TERM KILL
+trap 'rm -f '"\$TEMP" EXIT INT TERM KILL
 wget -nv "$TARGET" -O "\$TEMP"
 test_sum "$MD5SUM" md5sum "\$TEMP"
 test_sum "$SHA1SUM" sha1sum "\$TEMP"
