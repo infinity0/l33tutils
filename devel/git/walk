@@ -1,0 +1,79 @@
+#!/bin/sh
+
+BASE="tmp/walk"
+
+warn() { echo >&2 "W: $@"; }
+abort() { echo >&2 "abort: $@"; }
+
+GIT_DIR=$(git rev-parse --show-toplevel)
+X=$?; if [ -z "$GIT_DIR" ]; then exit $X; fi
+
+set -o errexit
+
+BRANCH=${1:-HEAD}
+
+DEREF=$(git symbolic-ref -q "$BRANCH") || true
+if [ -n "$DEREF" ]; then
+	warn "symbolic-ref $BRANCH dereferenced to $DEREF"
+	if [ "$(git config --bool undo.warnSymbolicRefs)" != "true" ]; then
+		cat >&2 <<-EOF
+		You selected a symbolic ref; we will instead walk the reflog of its current
+		symbolic target. This is because git reflog does not log changes to the
+		symbolic target of a symbolic ref, only the fully dereferenced SHA1 target, so
+		it is impossible for us to exactly reproduce changes made to it. Instead we
+		will do the next best thing, which is to walk the reflog of the target that the
+		symbolic ref points to. In most cases this should be what you wanted.
+		To suppress this warning, set undo.warnSymbolicRefs to true.
+		EOF
+	fi
+fi
+
+for ref in "$DEREF" "refs/heads/$BRANCH"; do
+	if ! [ -f "$GIT_DIR/logs/$ref" ]; then continue; fi
+	REF="$ref"
+	REFLOG="$GIT_DIR/logs/$ref"
+	REFSTATE="$GIT_DIR/$BASE/$ref"
+done
+
+if [ -z "$REFLOG" ]; then abort "not a local branch: $BRANCH"; exit 1; fi
+
+# after this point, we should not know about what symbolic refs were specified
+unset BRANCH DEREF
+
+ref_at() {
+	echo "$REF@{$(($(wc -l "$REFLOG" | cut -f1 '-d ') - $1))}"
+}
+
+if ! diff -q "$REFLOG" "$REFSTATE" >/dev/null 2>&1; then
+	warn "reflog changed since last undo/redo; reset"
+	mkdir -p "$(dirname "$REFSTATE")"
+	cp "$REFLOG" "$REFSTATE"
+	sed -n "\$p" "$REFLOG" > "$REFSTATE.top"
+	sed -n "\$p" "$REFLOG" > "$REFSTATE.current"
+fi
+
+TOPLINE=$(cat "$REFSTATE.top")
+CURLINE=$(cat "$REFSTATE.current")
+
+TOPLINO=$(grep -nFx "$TOPLINE" "$REFSTATE" | cut -d: -f1)
+CURLINO=$(grep -nFx "$CURLINE" "$REFSTATE" | cut -d: -f1)
+
+case "$0" in
+undo | */undo ) DSTLINO="$(($CURLINO - 1))";;
+redo | */redo ) DSTLINO="$(($CURLINO + 1))";;
+* ) abort "no command specified {undo|redo}"; exit 1;;
+esac
+
+if [ "$DSTLINO" -gt "$TOPLINO" ]; then abort "nothing to redo"; exit 1; fi
+DSTLINE=$(sed -n "${DSTLINO}p" "$REFSTATE")
+
+ABBREV=$(git log -1 --pretty="%h" $(echo "$DSTLINE" | cut -f2 '-d '))
+SUMMARY=$(echo "$DSTLINE" | cut -f2)
+#git update-ref -m "$CMD $REF: $ABBREV $SUMMARY" "$REF" $(ref_at "$DSTLINO")
+git update-ref -m "$CMD: $SUMMARY" "$REF" $(ref_at "$DSTLINO")
+if [ "$(git symbolic-ref -q HEAD)" = "$REF" ]; then
+	git reset --hard HEAD
+fi
+
+echo "$DSTLINE" > "$REFSTATE.current"
+cp "$REFLOG" "$REFSTATE"
