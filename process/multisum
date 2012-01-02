@@ -12,7 +12,7 @@
 # 2 error calculating checksums locally
 # 3 error retrieving with wget
 
-USAGE="Usage: $0 <REMOTE> [<HOST> ...]"
+USAGE="Usage: $0 [-f SSH_CONFIG] <REMOTE> [<HOST> ...]"
 
 # when multiple errors occur on multiple hosts, we return smallest one
 # i.e. smallest should be most important
@@ -23,6 +23,7 @@ ERR_SYNTAX_CFG=253
 ERR_SYNTAX_CMD=254
 
 HEADER="# multisum: default-whitespace-hosts"
+DEFAULTS="$HOME/.ssh/config"
 abort() { X="$1"; shift; echo >&2 "$@"; exit $X; }
 info() { true; }
 
@@ -32,6 +33,7 @@ while getopts f:vh o; do
 		info() { echo >&2 "$@"; }
 		NEWOPTS="$NEWOPTS -v"
 		;;
+	f ) DEFAULTS="$OPTARG";;
 	h|\? ) echo >&2 "$USAGE"; exit $ERR_SYNTAX_CMD;;
 	esac
 done
@@ -44,7 +46,20 @@ fi
 
 shift
 if [ -z "$1" ]; then
-	abort $ERR_SYNTAX_CMD "need to specify some remote hosts"
+	info "reading defaults from $DEFAULTS"
+	if [ "$(head -n1 "$DEFAULTS")" = "$HEADER" ]; then
+		HOSTS=$(sed -rn -e 's/^Host  (\S+(\s\S+)*)(  .*)?$/\1/p' "$DEFAULTS")
+		if [ -n "$HOSTS" ]; then
+			info "using hosts: $(echo $HOSTS)"
+			echo "$HOSTS" | xargs "$0" $NEWOPTS "$TARGET"
+			exit $?
+		else
+			abort $ERR_SYNTAX_CFG \
+			  "no hosts found, expected lines like" '"Host  [multisum hosts]  [other hosts]"'
+		fi
+	else
+		abort $ERR_SYNTAX_CFG "expected header not found: $HEADER"
+	fi
 fi
 
 sum() {
