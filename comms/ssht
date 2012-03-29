@@ -1,38 +1,32 @@
 #!/bin/sh
+# Simple wrapper around autossh that automatically:
+# - adds a remote command if "#RemoteCommand" is defined in ssh_config, else -N
+# - sets AUTOSSH_LOGFILE to ~/.ssh/autossh.log
 
-USAGE="Usage: $0 [-h|-v] <TUNNEL> [<PARAMS>]"
-VERBOSE=false
+get_ssh_config_opt() {
+	sed -nr '/^Host\s+(.*\s+)?'"$1"'(\s+|$)/,/^\s*$/p' ~/.ssh/config | sed -nr -e 's/^'"$2"'\s+(.*)/\1/gp'
+}
 
-case $1 in
--v | --verbose )
-	VERBOSE=true
-	shift
-	;;
--h | --help )
-	cat >&2 <<-EOF
-	$USAGE
-	Start an autossh tunnel, defined in ~/.ssh/presets
-
-	Options:
-	  -h, --help                 This help message.
-	  -v, --verbose              Show what is being executed.
-
-	EOF
-	exit
-	;;
-esac
-
-if [ -z "$1" ]; then echo >&2 "$USAGE"; exit 2; fi
-TUN="$1"
-shift
-
-line=$(grep -m1 "^$TUN" "$HOME/.ssh/presets")
-if [ -z "$line" ]; then echo >&2 "could not find \"$TUN\" in ~/.ssh/presets"; exit 1; fi
-
-args="${line#$TUN	}"
-
-if $VERBOSE; then for i in exec sh -c "exec autossh $args \$@" -- "$@"; do echo -n "'$i' "; done; echo ""; fi
-if ! which autossh >/dev/null; then echo >&2 "need autossh installed"; exit 1; fi
+get_host_from_ssh_cmdline() {
+	for i in "$@"; do
+		case "$i" in
+		[/~-]*|*[:@]*) continue;;
+		*) echo "$i"; break;;
+		esac
+	done
+}
 
 export AUTOSSH_LOGFILE="$HOME/.ssh/autossh.log"
-exec sh -c "exec autossh $args \$@" -- "$@"
+
+HOST=$(get_host_from_ssh_cmdline "$@")
+# TODO: detect hostname properly, inc. parse user@host:port correctly
+test -n "$HOST" || { echo >&2 "could not detect Host from cmdline: $@"; exit 1; }
+
+RCMD=$(get_ssh_config_opt "$HOST" '[#\s]+RemoteCommand')
+# TODO: don't do this if $@ already contains a RCMD
+if [ -z "$RCMD" ]; then
+	exec autossh -N "$@"
+else
+	# TODO: parse quotes properly
+	exec autossh "$@" $RCMD
+fi
