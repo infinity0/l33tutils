@@ -1,4 +1,5 @@
 #!/bin/sh
+# Reveals location of streamed flash content
 
 MINMTIME=300
 MINFSIZE=1048576

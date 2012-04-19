@@ -4,20 +4,18 @@ tools for fighting the p0wer, aka
 random crap by infinity0
 
 - comms
-	send/recv, by any means necessary
+	send/recv, diagnosis and workarounds
 - core
 	links to the most staple programs from the other packages
 - devel
 	development tools and convenience scripts
-- expose
-	de-obfuscate useful information
+- data
+	read write generate verify present
+	- security
+		passwords and crypto
+	- read
+		read unusual stuff
 - ops
 	tools for various long-term operations
-- present
-	making yo data look sexy
-- process
-	data crunching 4 evar
-- secret
-	makin' and breakin' passwords and crypto
 - uberimg
 	yo dawg i herd u liek live cds

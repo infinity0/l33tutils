@@ -46,5 +46,8 @@ case "$STAGE" in
 3|cryptsetup )
 	echo "not implemented yet"
 	exit 1
+	cryptsetup -h sha256 -s 256 aes-cbc-essiv:sha256 "$DEV"
+	cryptsetup -h sha256 -s 512 aes-xts-plain "$DEV"
+	cryptsetup -h sha256 -s 512 serpent-xts-plain "$DEV"
 	;;
 esac
