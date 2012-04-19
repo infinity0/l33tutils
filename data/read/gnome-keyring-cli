@@ -1,0 +1,61 @@
+#!/bin/bash
+# Query a GNOME keyring
+# When used over ssh, will auto start/stop new dbus/gk daemons to make it work.
+
+USAGE="Usage: $0"
+
+test -n "$DISPLAY" || { echo "DISPLAY not set. did you use ssh -X?"; exit 1; }
+
+. <(dbus-launch)
+export DBUS_SESSION_BUS_ADDRESS DBUS_SESSION_BUS_PID
+. <(gnome-keyring-daemon)
+export GNOME_KEYRING_CONTROL GNOME_KEYRING_PID SSH_AUTH_SOCK
+gnome-keyring-daemon --start --control-directory="$GNOME_KEYRING_CONTROL" >/dev/null
+trap "kill $DBUS_SESSION_BUS_PID $GNOME_KEYRING_PID" EXIT INT TERM
+
+python -c '
+import code, gnomekeyring
+
+def main():
+	GKR = gnomekeyring
+
+	def pp(res):
+		"""Print details of a list of GnomeKeyringFound."""
+		for i in res:
+			print "-" * 40
+			for k, v in i.attributes.iteritems():
+				print k, ":", v
+			print "Secret :", i.secret
+
+	def find_mozilla(hostname=None, username=None):
+		"""Find password entries as stored by mozilla-gnome-keyring."""
+		attr = {}
+		if hostname: attr["hostname"] = hostname
+		if username: attr["username"] = username
+		if not attr:
+			raise ValueError("must supply one of (hostname, username)")
+		return gnomekeyring.find_items_sync(gnomekeyring.ITEM_GENERIC_SECRET, attr)
+
+	code.interact(
+	  """GNOME Keyring python shell
+
+Use dir() for a list of functions, and help(f) to view help on function f.
+The gnomekeyring module is also available directly, as GKR.
+
+Example:
+
+>>> pp(find_mozilla("https://accounts.google.com", "infinity0@gmx.com"))
+----------------------------------------
+username : infinity0@gmx.com
+usernameField : Email
+hostname : https://accounts.google.com
+formSubmitURL : https://accounts.google.com
+mozLoginInfoMagic : loginInfoMagicv1
+passwordField : Passwd
+Secret : hunter2
+""",
+      local=locals())
+
+if __name__ == "__main__":
+	main()
+'
