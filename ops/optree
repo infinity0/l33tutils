@@ -1,0 +1,54 @@
+#!/bin/sh
+
+case "$1" in
+-v | --verbose )
+	VERBOSE="-v"
+	shift
+	;;
+-d | --dry-run )
+	DRYRUN="echo"
+	shift
+	;;
+-h | --help )
+	echo >&2 "Usage: $0 [-v|--verbose] [-d|--dry-run] <SOURCE> <TARGET>"
+	echo >&2 "Graft a directory structure onto another."
+	exit
+	;;
+esac
+
+test -d "$1" || { echo "need source dir"; exit 1; }
+test -d "$2" || { echo "need target dir"; exit 1; }
+
+case "$(basename "$0")" in
+mvtree)	op() { $DRYRUN mv $VERBOSE "$1" "$2"; };;
+lntree)	op() { $DRYRUN ln -s $VERBOSE "$3$1" "$2"; };;
+*)	echo >&2 "Must be invoked as lntree or mvtree"; exit 1;;
+esac
+
+optree() {
+	local src="$1" dst="$2"
+	for i in "$src"/*; do
+		local j="$dst/$(basename "$i")"
+		local path_pre path_dir
+
+		# adjust source if it's a relative path
+		if [ "${src#/}" = "${src}" ]; then
+			path_pre="$3"
+			next_pre="$3../"
+		else
+			path_pre=""
+			next_pre=""
+		fi
+
+		if [ ! -e "$j" ]; then
+			op "$i" "$j" "$path_pre"
+		elif [ ! -h "$j" -a -d "$j" -a ! -h "$i" -a -d "$i" ]; then
+			optree "$j" "$i" "$next_pre"
+		else
+			echo >&2 "skipping: $j -> $i"
+		fi
+	done
+}
+
+# strip trailing slash
+optree "$(dirname "$1/.")" "$(dirname "$2/.")"

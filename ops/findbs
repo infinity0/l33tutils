@@ -1,0 +1,3 @@
+#!/bin/sh
+# find broken symlinks
+find "$@" -type l -execdir sh -c 'test -e "$1" || echo "$PWD/$(basename "$1")";' sh '{}' \;
