@@ -1,0 +1,18 @@
+#!/bin/sh
+# Script to automatically switch between nvidia/non-nvidia gfx drivers when you
+# use the same OS between different computers, e.g. from ext hdd.
+# To install, use `crontab -e` and add a @reboot <this script> line
+
+set -o errexit
+
+#test "$(id -u)" = 0 || { echo >&2 "must be root"; exit 3; }
+test -f /etc/X11/xorg.conf.default || touch /etc/X11/xorg.conf.default
+test -f /etc/X11/xorg.conf.nvidia || nvidia-xconfig -c /etc/X11/xorg.conf.default -o /etc/X11/xorg.conf.nvidia
+
+if lspci | grep -i vga | grep -i nvidia; then
+	ln -sf xorg.conf.nvidia /etc/X11/xorg.conf
+	echo "glx auto /usr/lib/nvidia" | update-alternatives --set-selections
+else
+	ln -sf xorg.conf.default /etc/X11/xorg.conf
+	echo "glx manual /usr/lib/mesa-diverted" | update-alternatives --set-selections
+fi
