@@ -13,7 +13,7 @@ while getopts 't:s:' o; do
 done
 shift $(expr $OPTIND - 1)
 
-for fpid in $(pgrep -f libflashplayer.so) $(pgrep -f firefox); do
+for fpid in $(pgrep -f 'firefox|libflashplayer.so' | sort -u); do
 	for ftmp in /proc/$fpid/fd/*; do
 		TARGET=$(readlink $ftmp);
 		FNAME=${TARGET}
