@@ -1,17 +1,14 @@
 #!/bin/sh
 
+RECURSE=false
 case "$1" in
--v | --verbose )
-	VERBOSE="-v"
-	shift
-	;;
--d | --dry-run )
-	DRYRUN="echo"
-	shift
-	;;
+-v | --verbose ) VERBOSE="-v"; shift;;
+-r | --recurse ) RECURSE=true; shift;;
+-d | --dry-run ) DRYRUN="echo"; shift;;
 -h | --help )
-	echo >&2 "Usage: $0 [-v|--verbose] [-d|--dry-run] <SOURCE> <TARGET>"
-	echo >&2 "Graft a directory structure onto another."
+	echo >&2 "Usage: $0 [-v|--verbose] [-d|--dry-run] [-r|--recurse] <SOURCE> <TARGET>"
+	echo >&2 "Graft a directory structure onto another, without overwriting existing files."
+	echo >&2 "--recurse means to descend into directories rather than operating on the directory."
 	exit
 	;;
 esac
@@ -24,6 +21,10 @@ mvtree)	op() { $DRYRUN mv $VERBOSE "$1" "$2"; };;
 lntree)	op() { $DRYRUN ln -s $VERBOSE "$3$1" "$2"; };;
 *)	echo >&2 "Must be invoked as lntree or mvtree"; exit 1;;
 esac
+
+is_dir() {
+	test ! -h "$1" -a -d "$1";
+}
 
 optree() {
 	local src="$1" dst="$2"
@@ -41,11 +42,16 @@ optree() {
 		fi
 
 		if [ ! -e "$j" ]; then
-			op "$i" "$j" "$path_pre"
-		elif [ ! -h "$j" -a -d "$j" -a ! -h "$i" -a -d "$i" ]; then
-			optree "$j" "$i" "$next_pre"
+			if is_dir "$i" && $RECURSE; then
+				mkdir "$j"
+				optree "$i" "$j" "$next_pre"
+			else
+				op "$i" "$j" "$path_pre"
+			fi
+		elif is_dir "$i" && is_dir "$j"; then
+			optree "$i" "$j" "$next_pre"
 		else
-			echo >&2 "skipping: $j -> $i"
+			echo >&2 "skipped: $j -> $i"
 		fi
 	done
 }
