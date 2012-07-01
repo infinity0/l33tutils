@@ -14,6 +14,10 @@
 
 USAGE="Usage: $0 [-f SSH_CONFIG] <REMOTE> [<HOST> ...]"
 
+# TODO(infinity0): shell metachars will mess up $WGET at remote run
+: "${WGET:=wget}"
+: "${SSH_CONFIG:=$HOME/.ssh/config}"
+
 # when multiple errors occur on multiple hosts, we return smallest one
 # i.e. smallest should be most important
 ERR_MISMATCH=1
@@ -23,17 +27,15 @@ ERR_SYNTAX_CFG=253
 ERR_SYNTAX_CMD=254
 
 HEADER="# multisum: default-whitespace-hosts"
-DEFAULTS="$HOME/.ssh/config"
 abort() { X="$1"; shift; echo >&2 "$@"; exit $X; }
 info() { true; }
 
-while getopts f:vh o; do
+while getopts vh o; do
 	case $o in
 	v )
 		info() { echo >&2 "$@"; }
 		NEWOPTS="$NEWOPTS -v"
 		;;
-	f ) DEFAULTS="$OPTARG";;
 	h|\? ) echo >&2 "$USAGE"; exit $ERR_SYNTAX_CMD;;
 	esac
 done
@@ -46,9 +48,9 @@ fi
 
 shift
 if [ -z "$1" ]; then
-	info "reading defaults from $DEFAULTS"
-	if [ "$(head -n1 "$DEFAULTS")" = "$HEADER" ]; then
-		HOSTS=$(sed -rn -e 's/^Host  (\S+(\s\S+)*)(  .*)?$/\1/p' "$DEFAULTS")
+	info "reading defaults from $SSH_CONFIG"
+	if [ "$(head -n1 "$SSH_CONFIG")" = "$HEADER" ]; then
+		HOSTS=$(sed -rn -e 's/^Host  (\S+(\s\S+)*)(  .*)?$/\1/p' "$SSH_CONFIG")
 		if [ -n "$HOSTS" ]; then
 			info "using hosts: $(echo $HOSTS)"
 			echo "$HOSTS" | xargs "$0" $NEWOPTS "$TARGET"
@@ -69,7 +71,7 @@ sum() {
 }
 
 DST=$(basename "$TARGET")
-wget -nv "$TARGET" -O "$DST" || exit $ERR_WGET
+$WGET -nv "$TARGET" -O "$DST" || exit $ERR_WGET
 sum md5sum "$DST"; MD5SUM="$SUM" || exit $ERR_LOCAL_SUM
 sum sha1sum "$DST"; SHA1SUM="$SUM" || exit $ERR_LOCAL_SUM
 sum sha256sum "$DST"; SHA256SUM="$SUM" || exit $ERR_LOCAL_SUM
@@ -80,7 +82,7 @@ info "errors will be explicitly reported; no news is good news."
 X=256
 for remote in "$@"; do
 info ">> $remote: "
-ssh "$remote" sh <<EOF || { Y=$?; [ $Y -lt $X ] && X=$Y; }
+ssh "$remote" sh -s <<EOF || { Y=$?; [ $Y -lt $X ] && X=$Y; }
 test_sum() {
 EXPECT="\$1"
 ACTUAL=\$("\$2" "\$3" | cut '-d ' -f1)
@@ -93,7 +95,7 @@ return 0
 
 TEMP=\$(tempfile)
 trap 'rm -f '"\$TEMP" EXIT INT TERM KILL
-wget -nv "$TARGET" -O "\$TEMP" || exit $ERR_WGET
+$WGET -nv "$TARGET" -O "\$TEMP" || exit $ERR_WGET
 test_sum "$MD5SUM" md5sum "\$TEMP" || exit $ERR_MISMATCH
 test_sum "$SHA1SUM" sha1sum "\$TEMP" || exit $ERR_MISMATCH
 test_sum "$SHA256SUM" sha256sum "\$TEMP" || exit $ERR_MISMATCH
