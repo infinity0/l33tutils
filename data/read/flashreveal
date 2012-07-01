@@ -34,7 +34,7 @@ for fpid in $(pgrep -f 'firefox|libflashplayer.so' | sort -u); do
 			n )	break;;
 			p )	totem "$ftmp";;
 			v )	totem "$ftmp"; break;;
-			* )	COPYNAME="$x";;
+			* )	COPYNAME="$(echo "$x" | sed -e 's|/|__|g')";;
 			esac
 		done
 	done
