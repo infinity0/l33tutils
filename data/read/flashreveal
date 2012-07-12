@@ -23,7 +23,7 @@ for fpid in $(pgrep -f 'firefox|libflashplayer.so' | sort -u); do
 		if [ "$FNAME" = "$TARGET" ]; then continue; fi
 		SINCE="$(expr $(date +%s) - $(date +%s -r "$ftmp"))"
 		SIZE="$(stat -L -c %s "$ftmp")"
-		if ! [ "$SINCE" -gt "$MINMTIME" -a "$SIZE" -gt "$MINFSIZE" ]; then continue; fi
+		if ! [ "$SINCE" -ge "$MINMTIME" -a "$SIZE" -ge "$MINFSIZE" ]; then continue; fi
 		COPYNAME="FlashXX$FNAME"
 		echo ">>> $ftmp"
 		while true; do
