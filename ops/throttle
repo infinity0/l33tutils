@@ -1,0 +1,107 @@
+#!/bin/sh
+# Implements polynomial backoff on top of a command that is run periodically.
+
+USAGE="Usage: $0 -a <MIN> -b <MAX> -p <POW> [-e <EXPIRE>] <IDFILE> [<COMMAND>]"
+DEBUG=false
+DRYRUN=
+
+while getopts a:b:p:e:dnh o; do
+	case $o in
+	a ) MIN_INTERVAL="$OPTARG";;
+	b ) MAX_INTERVAL="$OPTARG";;
+	p ) POWER_FACTOR="$OPTARG";;
+	e ) EXPIRE_TIME="$OPTARG";;
+	d ) DEBUG=true;;
+	n ) DRYRUN=echo;;
+	h )
+		cat <<-EOF
+		$USAGE
+
+		Implements polynomial backoff on top of a command that is run periodically. For
+		example, nagios is a monitoring service that sends periodic notifications on
+		certain events. Instead of running the notification command directly, you can
+		wrap this script around that command to make it less spammy.
+
+		In the following explanation, "executor" refers to the underlying entity that
+		periodically runs this script, which you control - e.g. a monitoring service, a
+		scheduler, or something custom that might be as simple as a while-sleep loop.
+
+		Arguments:
+		IDFILE              File to store throttle state in. This should be unique for
+		                    each sequence of runs - e.g. if you have two events A and B
+		                    that both cause periodic alerts, they should use *separate*
+		                    IDFILEs, but alerts for a particular event should use the
+		                    *same* IDFILE. Some executors expose macros that are unique
+		                    to each event, e.g. nagios defines \$HOSTEVENTID\$ and
+		                    \$SERVICEEVENTID\$; if such data is not available, you can
+		                    try to create your own "id" by combining other data into a
+		                    unique identifier.
+		COMMAND             The command to run, when appropriate.
+
+		Options:
+		  -a MIN_INTERVAL   Minimum interval to run the command at, in seconds. For best
+		                    results, this should be the same as the period that the
+		                    underlying executor runs the script, e.g. for nagios, this
+		                    should be the same as the notification_interval of the
+		                    service definition that causes this script to be run.
+		  -b MAX_INTERVAL   Maximum interval to run the command at, in seconds.
+		  -p POWER_FACTOR   Power factor to apply to the counter. The throttle interval
+		                    at each iteration is defined as min(a * counter ** p, b),
+		                    where counter is the number of times we've *run* <COMMAND>,
+		                    i.e. excluding suppressed runs.
+		  -e EXPIRE_TIME    Expire time, in seconds. If the underlying executor does not
+		                    run the script in this time, reset the counter.
+		  -d                Output debugging information.
+		  -n                Print the command to be run, rather than running it.
+		  -h                This help text.
+
+		Note: nagios by default takes time units in minutes. To use seconds instead,
+		which is what this script uses, set interval_length=1 in your nagios.cfg.
+		EOF
+		exit 1
+		;;
+	\? ) echo $USAGE; exit 1;;
+	esac
+done
+shift `expr $OPTIND - 1`
+
+abort() { echo >&2 "$2"; exit $1; }
+
+set -o errexit
+test "$MIN_INTERVAL" -gt 0 || \
+  abort 2 "MIN_INTERVAL must > 0: $MIN_INTERVAL"
+test "$MAX_INTERVAL" -gt "$MIN_INTERVAL" || \
+  abort 2 "MAX_INTERVAL must > MIN_INTERVAL: $MAX_INTERVAL $MIN_INTERVAL"
+python -c "import sys; sys.exit(not int($POWER_FACTOR) > 1)" || \
+  abort 2 "POWER_FACTOR must > 1: $POWER_FACTOR"
+EXPIRE_TIME="${EXPIRE_TIME:-$(expr 2 '*' "$MIN_INTERVAL")}"
+test "$EXPIRE_TIME" -gt "$MIN_INTERVAL" || \
+  abort 2 "EXPIRE_TIME must > MIN_INTERVAL: $EXPIRE_TIME $MIN_INTERVAL"
+NOW=$(date +%s)
+
+IDFILE="$1"
+shift
+
+cur_interval() {
+	python -c "print int(min($MIN_INTERVAL * $1 ** $POWER_FACTOR, $MAX_INTERVAL))";
+}
+
+test -e "$IDFILE" || echo "$NOW 0" > "$IDFILE"
+test -f "$IDFILE" -a -w "$IDFILE" || abort 3 "not writable: $IDFILE"
+
+if $DEBUG; then cat "$IDFILE"; fi
+
+# reset the counter if expired
+LAST_UPDATED=$(expr "$NOW" - "$(stat -c %Y "$IDFILE")" || true)
+if [ "$LAST_UPDATED" -gt "$EXPIRE_TIME" ]; then
+	echo "$NOW 0" > "$IDFILE"
+fi
+
+touch "$IDFILE"
+
+# if appropriate, increment and run the command
+read LAST COUNTER < "$IDFILE"
+if [ "$NOW" -ge "$(expr "$LAST" + "$(cur_interval "$COUNTER")")" ]; then
+	echo "$NOW $(expr "$COUNTER" + 1)" > "$IDFILE"
+	exec $DRYRUN "$@"
+fi
