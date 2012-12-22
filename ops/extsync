@@ -1,0 +1,69 @@
+#!/bin/sh
+# rsync directories to a remote host whilst maintaining path structure.
+
+USAGE="Usage: $0 -r <REMOTE> [-l <LOCAL>] <DIRECTION> [<DIR>]"
+DEBUG=false
+DRYRUN=
+
+BASE_L="$HOME"
+while getopts l:r:dnh o; do
+	case $o in
+	r ) BASE_R="$OPTARG";;
+	l ) BASE_L="$OPTARG";;
+	d ) DEBUG=true;;
+	n ) DRYRUN=echo;;
+	h )
+		cat <<-EOF
+		$USAGE
+
+		rsync directories to a remote host whilst maintaining path structure.
+
+		Arguments:
+		DIRECTION           Up = sync local to remote; Down = sync remote to local.
+		DIR                 Directory to sync. If \$DIR = \$LOCAL/\$RELATIVE,
+		                    then \$DIR will be synced to/from \$REMOTE/\$RELATIVE.
+
+		Options:
+		  -r REMOTE         Path to remote base dir, in the form accepted by ssh(1).
+		  -l LOCAL          Path to local base dir, \$HOME by default.
+		  -d                Output debugging information.
+		  -n                Print the command to be run, rather than running it.
+		  -h                This help text.
+		EOF
+		exit 1
+		;;
+	\? ) echo $USAGE; exit 1;;
+	esac
+done
+shift `expr $OPTIND - 1`
+
+abort() { echo >&2 "$2"; exit $1; }
+abspath() { cd "$1"; pwd; cd "$OLDPWD"; }
+run() {
+	if $DEBUG; then echo "$PS4$@"; fi
+	$DRYRUN "$@"
+}
+
+DIREC="$1"
+D="$2"
+
+test -n "$BASE_R" || abort 2 "no remote selected; use -r"
+test -n "$D" -a -d "$D" || abort 2 "not a directory: $D"
+
+D="$(abspath "${D:-.}")"
+
+case "$DIREC" in
+u|up)
+	SRC="${D}/"
+	DST="$BASE_R/${D#$BASE_L/}/"
+	;;
+d|down)
+	SRC="$BASE_R/${D#$BASE_L/}/"
+	DST="${D}/"
+	;;
+*)
+	abort 2 "Specify a direction, up or down."
+	;;
+esac
+
+run rsync -avxz --delete --update "$SRC" "$DST"
