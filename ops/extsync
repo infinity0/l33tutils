@@ -3,7 +3,7 @@
 
 USAGE="Usage: $0 -r <REMOTE> [-l <LOCAL>] <DIRECTION> [<DIR>]"
 DEBUG=false
-DRYRUN=
+CONFIRM=true
 
 BASE_L="$HOME"
 while getopts l:r:dnh o; do
@@ -11,7 +11,7 @@ while getopts l:r:dnh o; do
 	r ) BASE_R="$OPTARG";;
 	l ) BASE_L="$OPTARG";;
 	d ) DEBUG=true;;
-	n ) DRYRUN=echo;;
+	y ) CONFIRM=false;;
 	h )
 		cat <<-EOF
 		$USAGE
@@ -39,9 +39,17 @@ shift `expr $OPTIND - 1`
 
 abort() { echo >&2 "$2"; exit $1; }
 abspath() { cd "$1"; pwd; cd "$OLDPWD"; }
-run() {
-	if $DEBUG; then echo "$PS4$@"; fi
-	$DRYRUN "$@"
+rrsync() {
+	if $DEBUG; then
+		echo "${PS4}rsync $@"
+		return
+	fi
+	if $CONFIRM; then
+		rsync -n "$@" 2>&1 | less
+		read -p "Execute this run? [y/N] " x
+		test "$x" = "y" || return 1
+	fi
+	rsync "$@"
 }
 
 DIREC="$1"
@@ -66,4 +74,4 @@ d|down)
 	;;
 esac
 
-run rsync -avxz --delete --update "$SRC" "$DST"
+rrsync -avxz --delete --update "$SRC" "$DST"
