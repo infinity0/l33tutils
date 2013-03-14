@@ -171,9 +171,10 @@ if [ ! -x "$APCACCESS" ]; then
 	exit 3
 fi
 
-$APCACCESS status $HOSTNAME:$PORT > /dev/null
+ERR=$($APCACCESS status $HOSTNAME:$PORT 2>&1 >/dev/null)
 if [ $? -ne 0 ]; then
 	# The error message from apcaccess will do fine.
+	echo "$STATUS - $ERR"
 	exit 3
 fi
 
@@ -185,6 +186,7 @@ if [ "$ARG" != "linefail" -a "$ARG" != "battstat" -a "$ARG" != "status" ]; then
 		VALUE=`echo $VALUE | sed 's/^0*//'`
 	fi
 	ROUNDED=`echo $VALUE | sed 's/\..*//'`
+	ROUNDED=${ROUNDED:-0}
 else
 	VALUE=`$APCACCESS status $HOSTNAME:$PORT | grep -i ^$ARG | \
 		sed 's/.*:  *\([A-Z]*\).*/\1/'`
