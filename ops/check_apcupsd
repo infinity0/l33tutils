@@ -86,7 +86,7 @@ usage()
 {
 	echo "usage: check_apcupsd [-c critical_value] [-h hostname] [-p port]"
 	echo -n "		     [-w warning_value] "
-	echo "<bcharge|itemp|loadpct|timeleft|linefail|battstat|status>"
+	echo "<bcharge|itemp|loadpct|timeleft|linefail|tonbatt|battstat|status>"
 	echo
 	echo "hostname and port defaults to localhost and 3551, respectively."
 	echo
@@ -97,6 +97,7 @@ usage()
 	echo "    timeleft = time left with current battery charge and load,"
 	echo "	       measured in minutes."
 	echo "    linefail = Whether the line is OK or not (Back UPS only)"
+	echo "    tonbatt  = Time since being on battery"
 	echo "    status   = Same as 'linefail' (Back UPS ES only - maybe others)"
 	echo "    battstat = Whether the battery is OK or not (Back UPS only)"
 	exit 3
@@ -132,7 +133,7 @@ while [ $OPTIND -gt 1 ]; do
 done
 
 if [ "$ARG" != "bcharge" -a "$ARG" != "itemp" -a "$ARG" != "loadpct" \
-	-a "$ARG" != "timeleft" -a "$ARG" != "linefail" \
+	-a "$ARG" != "timeleft" -a "$ARG" != "linefail" -a "$ARG" != "tonbatt" \
 	-a "$ARG" != "battstat" -a  "$ARG" != "status" ]; then
 	usage
 fi
@@ -228,6 +229,19 @@ battstat)
                 EXITVALUE=2
         fi
         echo "${STATUS} - Battery Status: ${VALUE}|'Battery Status'=${ROUNDED}"
+        ;;
+tonbatt)
+	if [ $ROUNDED -ge $CRITVAL ]; then
+		STATUS="CRITICAL"
+		EXITVALUE=2
+	elif [ $ROUNDED -ge $WARNVAL ]; then
+		STATUS="WARNING"
+		EXITVALUE=1
+	else
+		STATUS="OK"
+		EXITVALUE=0
+	fi
+        echo "${STATUS} - Time on Battery: ${VALUE}|'Time on Battery'=${ROUNDED}"
         ;;
 bcharge)
 	if [ "$CRITVAL" = "" ]; then
