@@ -1,8 +1,9 @@
 #!/bin/sh
 
 USAGE="Usage: $0 <local base> <remote url> <max % change>"
-test -n "$3" || { echo >&2 "$USAGE"; exit 2; }
-test -f "$1" || { echo >&2 "File does not exist: $1"; exit 3; }
+abort() { local x="$1"; shift; echo >&2 "$@"; exit $x; }
+test -n "$3" || abort 2 "$USAGE"
+test -f "$1" || abort 3 "File does not exist: $1"
 
 NAGIOS_HOME="${NAGIOS_HOME:-/usr/lib/nagios}"
 test -d "$NAGIOS_HOME" || abort 1 "NAGIOS_HOME not valid: $NAGIOS_HOME"
@@ -19,9 +20,9 @@ fi
 
 x="$(wdiff -123s "$1" "$tmp" | grep -o -P "([0-9]+)% \w+ed" | cut -d% -f1 | paste -sd+ | bc)"
 if [ "$x" -lt "$3" ]; then
-	echo "OK - $x% changed"
+	echo "OK - $2 - $x% changed"
 	exit "$STATE_OK"
 else
-	echo "CRITICAL - $x% changed"
+	echo "CRITICAL - $2 - $x% changed"
 	exit "$STATE_CRITICAL"
 fi
