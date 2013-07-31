@@ -53,11 +53,13 @@ rrsync() {
 }
 
 DIREC="$1"
-D="$2"
 
 test -n "$BASE_R" || abort 2 "no remote selected; use -r"
-test -n "$D" -a -d "$D" || abort 2 "not a directory: $D"
 
+shift
+for D in "$@"; do
+
+test -n "$D" -a -d "$D" || abort 2 "not a directory: $D"
 D="$(abspath "${D:-.}")"
 
 case "$DIREC" in
@@ -74,4 +76,6 @@ d|down)
 	;;
 esac
 
-rrsync -avxz --delete --update "$SRC" "$DST"
+rrsync -avxz --no-g --no-o --delete --update "$SRC" "$DST"
+
+done
