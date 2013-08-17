@@ -5,7 +5,7 @@ USAGE="Usage: $0 -r <REMOTE> [-l <LOCAL>] <DIRECTION> [<DIR>]"
 DEBUG=false
 CONFIRM=true
 
-BASE_L="$HOME"
+: "${BASE_L:=$HOME}"
 while getopts l:r:dnh o; do
 	case $o in
 	r ) BASE_R="$OPTARG";;
