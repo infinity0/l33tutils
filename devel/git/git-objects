@@ -1,4 +1,5 @@
 #!/bin/sh
+# Unpacks and uncompresses git objects into git-objects/objects-plain.
 
 if [ ! -d "$1" ]; then
 	echo >&2 "abort: $1 not a directory"
@@ -9,7 +10,7 @@ elif [ -d "$1/objects" ]; then
 	GIT_OBJ=$(readlink -f "$1/objects")
 fi
 
-rm -rf .git-objects && mkdir .git-objects && cd .git-objects
+rm -rf git-objects && mkdir git-objects && cd git-objects
 git init --bare
 for i in "$GIT_OBJ"/pack/*.pack; do
 	git unpack-objects < "$i"
