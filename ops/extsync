@@ -1,16 +1,19 @@
 #!/bin/sh
 # rsync directories to a remote host whilst maintaining path structure.
+#
+# TODO(infinity0): add a show-diff option.
+# unfortunately this will req something other than rsync.
 
 USAGE="Usage: $0 -r <REMOTE> [-l <LOCAL>] <DIRECTION> [<DIR>]"
-DEBUG=false
+DRYRUN=false
 CONFIRM=true
 
 : "${BASE_L:=$HOME}"
-while getopts l:r:dnh o; do
+while getopts r:l:nyh o; do
 	case $o in
 	r ) BASE_R="$OPTARG";;
 	l ) BASE_L="$OPTARG";;
-	d ) DEBUG=true;;
+	n ) DRYRUN=true;;
 	y ) CONFIRM=false;;
 	h )
 		cat <<-EOF
@@ -26,8 +29,8 @@ while getopts l:r:dnh o; do
 		Options:
 		  -r REMOTE         Path to remote base dir, in the form accepted by ssh(1).
 		  -l LOCAL          Path to local base dir, \$HOME by default.
-		  -d                Output debugging information.
 		  -n                Print the command to be run, rather than running it.
+		  -y                Skip confirmation request.
 		  -h                This help text.
 		EOF
 		exit 1
@@ -40,7 +43,7 @@ shift `expr $OPTIND - 1`
 abort() { echo >&2 "$2"; exit $1; }
 abspath() { cd "$1"; pwd; cd "$OLDPWD"; }
 rrsync() {
-	if $DEBUG; then
+	if $DRYRUN; then
 		echo "${PS4}rsync $@"
 		return
 	fi
@@ -53,15 +56,33 @@ rrsync() {
 }
 
 DIREC="$1"
-
-test -n "$BASE_R" || abort 2 "no remote selected; use -r"
-
 shift
+
+case "$DIREC" in
+u|up);;
+d|down);;
+*)
+	abort 2 "specify a direction, up or down."
+	;;
+esac
+
+test -n "$BASE_R" || abort 2 "no remote selected; use -r or BASE_R="
+test -n "$*" || abort 2 "no paths selected"
+
 for D in "$@"; do
 
-test -n "$D" -a -d "$D" || abort 2 "not a directory: $D"
+# resolve path
+if ! test -d "$D"; then
+	if ! test -d "$BASE_L/$D"; then
+		abort 2 "not a directory: $D or $BASE_L/$D"
+	else
+		D="$BASE_L/$D"
+	fi
+fi
 D="$(abspath "${D:-.}")"
+test "${D#$BASE_L/}" != "$D" || abort 2 "not under local base $BASE_L: $D"
 
+# resolve direction
 case "$DIREC" in
 u|up)
 	SRC="${D}/"
@@ -71,11 +92,9 @@ d|down)
 	SRC="$BASE_R/${D#$BASE_L/}/"
 	DST="${D}/"
 	;;
-*)
-	abort 2 "Specify a direction, up or down."
-	;;
 esac
 
+# execute sync
 rrsync -avxz --no-g --no-o --delete --update "$SRC" "$DST"
 
 done
