@@ -6,10 +6,11 @@ from subprocess import Popen, PIPE
 from getpass import getuser
 from cStringIO import StringIO
 
+user = None
 if len(sys.argv) > 1:
   user = sys.argv[1]
-else:
-  user = getuser()
+  if user in "~-":
+    user = getuser()
 
 # TODO extract from env
 #ms=01;31:mc=01;31:sl=:cx=:fn=35:ln=32:bn=32:se=36
@@ -21,8 +22,8 @@ RE_COLOR_SEP=RE_COLOR_P % GREP_SE
 RE_COLOR_MATCH=RE_COLOR_P % GREP_MS
 RE_COLOR_CLOSE=RE_COLOR_P % ""
 
-GREP_PATTERN = "TODO(%s)\: [A-Z0-9_ ]*" % user
-RE_PATTERN = "%sTODO\(%s\): ([A-Z0-9_ ]*)%s " % (RE_COLOR_MATCH, getuser(), RE_COLOR_CLOSE)
+GREP_PATTERN = "TODO\((%s)\)\?\: \?[A-Z0-9_ ]* " % (user or "[A-Za-z0-9_]\+")
+RE_PATTERN = "%sTODO(?:\(%s\))?: ?([A-Z0-9_ ]*)%s " % (RE_COLOR_MATCH, (user or "\w+"), RE_COLOR_CLOSE)
 RE_MATCHSEP = "%s:%s" % (RE_COLOR_SEP, RE_COLOR_CLOSE)
 
 FMT_WRAP = "\033[%sm\033[K"
@@ -52,5 +53,5 @@ todo.sort(key=get_prio_key, reverse=True)
 
 for item in todo:
   prio, file, detail = item
-  print "%s%s%s" % (FMT_MATCH, prio, FMT_CLOSE), file, detail,
+  print "%s%s%s" % (FMT_MATCH, prio or "(no tag)", FMT_CLOSE), file, detail,
 print "Total: %s%s" % (len(todo), " + %s w/o tag" % unrec if unrec else "")
