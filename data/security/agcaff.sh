@@ -1,3 +1,4 @@
+#!/bin/sh
 # Airgapped key-signing with caff
 #
 # You need:
@@ -6,13 +7,22 @@
 # - an unencrypted partition for transporting data between online/offline systems
 #   - this tool will overwrite .caff, $0, $0.state, and ksp-keys.txt
 #
+# Usage:
+#  online$ bhome=/$transport_dir agcaff init
+# offline$ shome=/$secure_dir /$transport_dir/agcaff  # or, for auto-unlock:
+# offline$ sdev=/dev/sda2 srel=home/infinity0 /$transport_dir/agcaff
+#  online$ /$transport_dir/agcaff
+#
+# TODO(infinity0): copy a signed copy of this script into the storage medium,
+# so people can check that the agcaff they're running isn't compromised.
+#
 # Your local mail client must work such that `mail $arbitrary_address` works
 # without further flags, since this is what caff does. Quick-and-dirty
 # instructions for configuring exim4 with remote SMTP:
 #
-# $ sudo dpkg-reconfig exim4-config
+# $ sudo dpkg-reconfigure exim4-config
 #   - General type of mail configuration: "mail sent by smarthost; received via SMTP or fetchmail"
-#   - IP address or host name of the outgoing smarthost: input your own
+#   - IP address or host name of the outgoing smarthost: input your SMTP server address
 # # then add your email to /etc/email-addresses
 # # then add your password to /etc/exim4/passwd.client
 # TODO(infinity0): write some snippets to install this automatically and
