@@ -1,30 +1,6 @@
 #!/bin/sh
 # auto-motion daemon
 # Monitor xscreensaver(1) and run motion(1) when the former is active.
-# Optionally mount something to motion's target_dir during monitoring.
-
-###############################################################################
-# user settings
-###############################################################################
-
-# File defining mount point presets.
-#
-# Each line is of the form '<source_name>\t<mount_command>'.
-#   <source_name> is a user-specified name
-#   <mount_command> is a shell snippet
-#
-# We run '<mount_command> $BIND_OPTS <target_dir>' to execute the mount
-#   <mount_command> corresponds to the <source_name> we select (see $BIND_SRC)
-#   <target_dir> is read from motion's config file, $MOTION_CONF
-#
-BIND_PRST="/usr/local/etc/amtnd.bind"
-
-# <source_name> from the presets file to select
-# If empty, we look for a line matching '-\t<source_name>' and use that.
-BIND_SRC=
-
-# Mount options to apply to every bind definition
-BIND_OPTS="-o nonempty"
 
 ###############################################################################
 # system vars, for devs
@@ -55,48 +31,8 @@ shift $(expr $OPTIND - 1)
 # daemon control
 ###############################################################################
 
-# Read an entry from the bind presets
-bind_prst_read() { grep -m1 ^"$1" "$2" | cut '-d	' -f2; }
-
-# Read and execute a binding for the motion target_dir
-mtn_bind() {
-	local bind_file="$1"
-
-	local bind_dir="$(eval echo $(grep -m1 '^target_dir' $MOTION_CONF | cut -b12-))"
-	if [ -z "$bind_dir" ]; then echo "target_dir not defined in motion.conf!"; exit 1; fi
-
-	local amtnd_bind="$2" bind_cmd=""
-	if [ -z "$amtnd_bind" ]; then amtnd_bind="$(bind_prst_read - "$BIND_PRST")"; fi
-	if [ -n "$amtnd_bind" ]; then bind_cmd="$(bind_prst_read "$amtnd_bind" "$BIND_PRST")"; fi
-
-	if [ -z "$bind_cmd" ]; then
-		rm -f "$bind_file"
-	elif $bind_cmd $BIND_OPTS "$bind_dir"; then
-		echo "bound $bind_dir as $bind_cmd"
-		echo "$bind_dir" > "$bind_file"
-	else
-		echo "failed to bind $bind_dir"
-	fi
-}
-
-# Drop a previously-created binding
-mtn_drop() {
-	local bind_file="$1"
-	if ! [ -f "$bind_file" ]; then return; fi
-
-	local bind_dir="$(cat "$bind_file")"
-	if ! [ -d "$bind_dir" ]; then return; fi
-
-	if umount -d "$bind_dir"; then
-		echo "unbound $bind_dir"
-	else
-		echo "failed to unbind $bind_dir"
-	fi
-}
-
-# Restart motion, executing some intermediate commands
-mtn_restart() {
-	if pgrep motion >&- && $MOTION_CTRL stop; then "$@"; $MOTION_CTRL start; else "$@"; fi
+mtn_reload() {
+	if pgrep motion >&-; then $MOTION_CTRL reload; fi
 }
 
 ## daemon control section
@@ -106,20 +42,19 @@ if [ -z "$PIDFILE" -a -z "$LOGFILE" ]; then
 
 	mkdir -p "$PIDDIR"
 	PIDFILE="$PIDDIR/amtnd.pid"
-	BINDFILE="$PIDDIR/amtnd.bind"
 	LOGFILE="$PIDDIR/amtnd.log"
 
 	RETURN=1
 	case $1 in
 	start )
 		if start-stop-daemon -v -p "$PIDFILE" -S -x "$XSCREEN_CTRL" -N 10 -b -a "$(readlink -f "$0")" -- -p "$PIDFILE" -l "$LOGFILE"; then
-			mtn_restart mtn_bind "$BINDFILE" "$BIND_SRC"
+			mtn_reload
 			RETURN=0
 		fi
 		;;
 	stop )
 		if start-stop-daemon -v -p "$PIDFILE" -K -x "$XSCREEN_CTRL"; then
-			mtn_restart mtn_drop "$BINDFILE"
+			mtn_reload
 			RETURN=0
 		fi
 		;;
