@@ -13,16 +13,30 @@ while getopts 't:s:' o; do
 done
 shift $(expr $OPTIND - 1)
 
-for fpid in $(pgrep -f 'firefox|libflashplayer.so' | sort -u); do
-	for ftmp in /proc/$fpid/fd/*; do
-		TARGET=$(readlink $ftmp);
-		FNAME=${TARGET}
-		FNAME=${FNAME#/tmp/FlashXX}
+for fpid in $(pgrep -f 'firefox|libflashplayer.so|libpepflashplayer.so|chromium' | sort -u); do
+	fdir=/proc/$fpid/fd
+	msudo=$(test -x $fdir && echo || echo sudo)
+	for ftmp in $($msudo ls -1 $fdir); do
+		ftmp=$fdir/$ftmp
+		TARGET=$($msudo readlink $ftmp);
+		FNAME="${TARGET}"
+		FNAME="${FNAME% (deleted)}"
 		if [ "$FNAME" = "$TARGET" ]; then continue; fi
-		FNAME=${FNAME% (deleted)}
-		if [ "$FNAME" = "$TARGET" ]; then continue; fi
-		SINCE="$(expr $(date +%s) - $(date +%s -r "$ftmp"))"
-		SIZE="$(stat -L -c %s "$ftmp")"
+		TARGET="${FNAME}"
+
+		FNAME="${FNAME#/tmp/FlashXX}" # old adobe flash player naming convention
+		if [ "$FNAME" = "$TARGET" ]; then
+			# pepper flash player naming convention
+			if [ "$(basename "$(dirname "$FNAME")")" = "Shockwave Flash" ]; then
+				FNAME="$(basename "$FNAME")"
+				FNAME="${FNAME#.org.chromium.Chromium.}"
+			else
+				continue
+			fi
+		fi
+
+		SINCE="$(expr $(date +%s) - $($msudo date +%s -r "$ftmp"))"
+		SIZE="$($msudo stat -L -c %s "$ftmp")"
 		if ! [ "$SINCE" -ge "$MINMTIME" -a "$SIZE" -ge "$MINFSIZE" ]; then continue; fi
 		COPYNAME="FlashXX$FNAME"
 		echo ">>> $ftmp"
@@ -30,7 +44,7 @@ for fpid in $(pgrep -f 'firefox|libflashplayer.so' | sort -u); do
 			echo "copy $ftmp => $COPYNAME"
 			read -p  "[Y]es, [n]o, [p]review, [v]iew-and-skip, or type an alternative name: " x
 			case "$x" in
-			y|"" )	cp -iL "$ftmp" "$COPYNAME"; break;;
+			y|"" )	$msudo cp -iL "$ftmp" "$COPYNAME"; chmod 644 "$COPYNAME"; break;;
 			n )	break;;
 			p )	totem "$ftmp";;
 			v )	totem "$ftmp"; break;;
