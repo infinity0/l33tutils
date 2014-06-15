@@ -54,9 +54,11 @@ gpgx_init() {
 
 gpgx_clean() {
 	if [ -e "$TMPDIR/done" ]; then
-		for i in "$TMPDIR"/*.orig; do
-			local old="$(readlink "$i")"
-			mv -f "$old.new" "$old"
+		for f in "$TMPDIR"/*.orig; do
+			if [ -f "${f%.orig}.new" ]; then
+				local old="$(readlink "$f")"
+				mv -f "${f%.orig}.new" "$old"
+			fi
 		done
 	else
 		debug "CHANGES (IF ANY) WERE NOT COMMITTED AND HAVE BEEN LOST!!!"
@@ -77,6 +79,7 @@ gpgx() {
 		if [ "${arg%.gpg}" != "$arg" ]; then
 			local f=$(mktemp "$TMPDIR/plain.XXXXXXXX")
 			gpg -d "$arg" > "$f" || abort 5 "could not decrypt $arg"
+			sha256sum "$f" > "$f.sha256"
 			ln -s "$arg" "$f.orig"
 			args[$i]="$f"
 			found=true
@@ -85,8 +88,10 @@ gpgx() {
 	$found || abort 2 "no .gpg arguments found; run without gpgx if you really meant this"
 	"${args[@]}"
 	for f in "$TMPDIR"/*.orig; do
-		local old="$(readlink "$f")"
-		gpg -o "$old.new" -e -r "$GNUPGEMAIL" "${f%.orig}" || abort 5 "could not encrypt ${f%.orig}"
+		if ! sha256sum -c --status "${f%.orig}.sha256"; then
+			local old="$(readlink "$f")"
+			gpg -o "${f%.orig}.new" -e -r "$GNUPGEMAIL" "${f%.orig}" || abort 5 "could not encrypt ${f%.orig}"
+		fi
 	done
 	touch "$TMPDIR/done"
 }
