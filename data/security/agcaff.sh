@@ -85,13 +85,14 @@ agcaff_sign() {
 	fi
 
 	if test -z "$shome"; then
-		test -b "$sdev" || abort "set shome to a directory on your secure partition, or else set sdev to the secure partition and srel to a relative directory within it"
+		test -b "$sdev" -a -n "$srel" || abort "set shome to a directory on your secure partition, or else set sdev to the secure partition and srel to a relative directory within it"
 		test -e /dev/mapper/x || sudo cryptsetup luksOpen "$sdev" x
 		mkdir -p /media/x
 		shome="/media/x/$srel"
 		test -d "$shome" || sudo mount /dev/mapper/x /media/x
 		test -d "$shome" || abort "sdev/srel did not point to a valid shome: $sdev $srel"
 	fi
+	test -w "$bhome/.caff" || abort "$bhome/.caff is not writable"
 	test -d "$shome" || abort "set shome to a directory on your secure partition (where .caffrc and .gnupg are)."
 	echo "using secure offline medium $shome"
 
