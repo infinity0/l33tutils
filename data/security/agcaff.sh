@@ -65,8 +65,8 @@ agcaff_init() {
 
 	set -x
 	caff --no-sign --no-export-old --no-mail "$(cat $bhome/ksp-keys.txt)"
-	cp -a --no-preserve=ownership -t "$bhome" "$HOME/.caff"
-	test "$SCRIPT_DIR" != "$bhome" && cp -a --no-preserve=ownership -t "$bhome" "$0"
+	cp -aL --no-preserve=ownership -t "$bhome" "$HOME/.caff"
+	test "$SCRIPT_DIR" != "$bhome" && cp -aL --no-preserve=ownership -t "$bhome" "$0"
 	echo sign > "$bhome/$STATE_FILE"
 	set +x
 	echo "saved {$0, ksp-keys.txt, ~/.caff} to $bhome"
@@ -97,9 +97,9 @@ agcaff_sign() {
 	echo "using secure offline medium $shome"
 
 	set -x
-	cp -a --no-preserve=ownership -t $HOME $bhome/.caff $shome/.caffrc $shome/.gnupg
+	cp -aL --no-preserve=ownership -t "$HOME" "$bhome/.caff" "$shome/.caffrc" "$shome/.gnupg"
 	caff --no-download --no-export-old --no-mail "$(cat $bhome/ksp-keys.txt)"
-	cp -a --no-preserve=ownership -t $bhome $HOME/.caff
+	cp -aL --no-preserve=ownership -t "$bhome" "$HOME/.caff"
 	remoteugid=$(stat -c %u:%g "$bhome/ksp-keys.txt")
 	if test "$(id -u):$(id -g)" != "$remoteugid"; then
 		sudo chown -R "$remoteugid" "$bhome/.caff"
@@ -114,7 +114,7 @@ agcaff_post() {
 	test -s "$bhome/ksp-keys.txt" || abort "\$bhome/ksp-keys.txt empty; did you run \`$0 init\` on your online system?"
 
 	set -x
-	cp -a --no-preserve=ownership -t "$HOME" "$bhome/.caff"
+	cp -aL --no-preserve=ownership -t "$HOME" "$bhome/.caff"
 	caff --no-download --no-sign --no-export-old "$(cat $bhome/ksp-keys.txt)"
 	echo init > "$bhome/$STATE_FILE"
 	mv "$bhome/ksp-keys.txt" "$bhome/ksp-keys.txt.done"
