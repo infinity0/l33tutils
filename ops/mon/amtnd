@@ -32,7 +32,7 @@ shift $(expr $OPTIND - 1)
 ###############################################################################
 
 mtn_reload() {
-	if pgrep motion >&-; then $MOTION_CTRL reload; fi
+	if pgrep motion >/dev/null; then $MOTION_CTRL reload; fi
 }
 
 ## daemon control section
