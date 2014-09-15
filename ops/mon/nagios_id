@@ -1,0 +1,5 @@
+#!/bin/sh
+# Generate a random ID for each nagios warning event.
+{
+test "$1" = 0 && echo "$2" || echo "$1"
+} | sha256sum | head -c8
