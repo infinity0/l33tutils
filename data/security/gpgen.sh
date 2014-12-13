@@ -28,20 +28,25 @@ if [ "$(gpg2 --version | head -n1)" != "gpg (GnuPG) 2.1.0" ]; then
 	exit 2
 fi
 
-echo "Creating key for $NAME with emails: $@"
-echo "You should be doing this on an offline airgapped secure machine."
-echo "You will be prompted to enter your password twice, first to generate and second to unlock."
+cat <<EOF
+Creating key for $NAME with emails: $@
+
+You should be doing this on an offline airgapped secure machine. You will be
+prompted to enter your master password three times - twice to generate and
+third to unlock. After that you will be prompted a bunch more times for the
+subkey passwords. It's recommended to have the master password be different
+from your subkey passwords, but the latter may be the same for convenience.
+EOF
 read -p "Press enter to continue or ctrl-c to abort" x
 
 set -e
 set -x
 
-prefix=gpgen-home
-rm -rf "$prefix"
+prefix="${prefix:-gpgen-home-$(date +%s)}"
+mkdir -p "$prefix"
 genlog="$prefix/$(basename "$0").$$.$(date +%s)"
 gpgex() {
     name="$1"; shift
-    mkdir -p gpgen-home
     gpg2 --no-default-keyring --expert --command-fd 0 --status-fd 3 \
       --homedir="$prefix" "$@" \
       3>&1 1>/dev/null | tee -a "$genlog.$name.log"
@@ -103,9 +108,8 @@ echo save
 
 gpgex export -o "$fingerprint.sec.asc" -a --export-secret-subkey "$fingerprint"
 gpgex export -o "$fingerprint.pub.asc" -a --export "${fingerprint:32:8}" # use whol fpr when #1787 is fixed
-cp "$prefix/openpgp-revocs.d/$fingerprint.rev" "$fingerprint.rev.asc"
 
 set +x
 echo "Key generation complete. Store ./$prefix somewhere offline."
-echo "Store $fingerprint.rev.gpg somewhere safe offline and don't lose it."
+echo "It contains your secret master key and a revocation certificate for it."
 echo "You may import $fingerprint.{sec,pub}.gpg to an online gpg installation."
