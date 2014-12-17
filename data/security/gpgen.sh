@@ -4,10 +4,8 @@
 # - separate keys each for certify sign auth, expire=1y
 # - separate key for encryption, expire=90d
 #
-# Tested against GPG 2.0.22, may not work with other versions
+# Tested against GPG 2.1.0, may not work with other versions
 #
-# TODO: version check for gpg
-# TODO: move to EdDSA when GPG 2.1 is out
 # TODO: sub-script to update expiry dates
 # TODO: sub-script to generate new encryption subkey, export only latest one
 
