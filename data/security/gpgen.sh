@@ -4,7 +4,7 @@
 # - separate keys each for certify sign auth, expire=1y
 # - separate key for encryption, expire=90d
 #
-# Tested against GPG 2.1.0, may not work with other versions
+# Tested against GPG 2.1.1, may not work with other versions
 #
 # TODO: sub-script to update expiry dates
 # TODO: sub-script to generate new encryption subkey, export only latest one
@@ -21,8 +21,8 @@ EXPIRE_E=90d
 NAME="$1"; shift
 test "${#NAME}" -ge 5 || { echo >&2 "Usage: $0 NAME [EMAIL ...]"; exit 2; }
 
-if [ "$(gpg2 --version | head -n1)" != "gpg (GnuPG) 2.1.0" ]; then
-	echo >&2 "Unexpected version (expected 2.1.0); abort"
+if [ "$(gpg2 --version | head -n1)" != "gpg (GnuPG) 2.1.1" ]; then
+	echo >&2 "Unexpected version (expected 2.1.1); abort"
 	exit 2
 fi
 
@@ -105,7 +105,7 @@ echo save
 } | gpgex subkeys --edit-key "$fingerprint"
 
 gpgex export -o "$fingerprint.sec.asc" -a --export-secret-subkey "$fingerprint"
-gpgex export -o "$fingerprint.pub.asc" -a --export "${fingerprint:32:8}" # use whol fpr when #1787 is fixed
+gpgex export -o "$fingerprint.pub.asc" -a --export "$fingerprint"
 
 set +x
 echo "Key generation complete. Store ./$prefix somewhere offline."
