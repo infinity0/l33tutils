@@ -3,6 +3,7 @@
 
 MINMTIME=300
 MINFSIZE=1048576
+VOPEN="${VOPEN:-gnome-mplayer}"
 
 while getopts 't:s:' o; do
 	case $o in
@@ -46,8 +47,8 @@ for fpid in $(pgrep -f 'firefox|libflashplayer.so|libpepflashplayer.so|chromium'
 			case "$x" in
 			y|"" )	$msudo cp -iL "$ftmp" "$COPYNAME"; chmod 644 "$COPYNAME"; break;;
 			n )	break;;
-			p )	totem "$ftmp";;
-			v )	totem "$ftmp"; break;;
+			p )	$VOPEN "$ftmp";;
+			v )	$VOPEN "$ftmp"; break;;
 			* )	COPYNAME="$(echo "$x" | sed -e 's|/|__|g')";;
 			esac
 		done
