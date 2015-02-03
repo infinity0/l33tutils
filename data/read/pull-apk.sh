@@ -5,6 +5,7 @@
 # $ ./pull-apk.sh <<EOF
 # com.android.vending
 # com.google.android.apps.maps
+# com.google.android.gms
 # com.google.android.youtube
 # de.srlabs.snoopsnitch
 # edu.cmu.cylab.starslinger
