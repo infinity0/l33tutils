@@ -1,102 +1,68 @@
 #!/bin/sh
 # auto-motion daemon
 # Monitor xscreensaver(1) and run motion(1) when the former is active.
+# May be run as a systemd Type=simple service.
 
-###############################################################################
-# system vars, for devs
-###############################################################################
-
-PIDDIR="/var/run/motion"
 XSCREEN_WATCH="xscreensaver-command -watch"
-XSCREEN_CTRL="$(which xscreensaver-command)"
 MOTION_CTRL="/etc/init.d/motion"
-MOTION_CONF="/etc/motion/motion.conf"
+DISPLAY="${DISPLAY:-:0.0}" # what xscreensaver-command defaults to
 
-# TODO: split up into control (init.d), daemon, and default scripts
-
-USAGE="Usage: $0 {start|stop|restart|status}\n       $0 -p PIDFILE -l LOGFILE"
-
-exit_syn() { echo "$USAGE"; exit 2; }
-
-while getopts p:l: f; do
-	case $f in
-	p ) PIDFILE="$OPTARG";;
-	l ) LOGFILE="$OPTARG";;
-	\? ) exit_syn;;
-	esac
-done
-shift $(expr $OPTIND - 1)
-
-###############################################################################
-# daemon control
-###############################################################################
-
-mtn_reload() {
-	if pgrep motion >/dev/null; then $MOTION_CTRL reload; fi
+find_xscreensaver_pid() {
+	local found_one=false
+	local pid=
+	for cand in $(pgrep '\bxscreensaver$'); do
+		local display="$(xargs -n1 -0 < /proc/$cand/environ | grep '^DISPLAY=')"
+		if [ "$display" = "DISPLAY=$DISPLAY" ]; then
+			if $found_one; then
+				echo >&2 "FIND failed: found two xscreensavers on display $DISPLAY ??: $pid $cand"
+				return 1
+			fi
+			pid="$cand"
+			found_one=true
+		fi
+	done
+	if $found_one; then
+		echo "$pid"
+	else
+		echo >&2 "FIND failed: couldn't find suitable xscreensaver"
+		return 1
+	fi
 }
 
-## daemon control section
+guess_xauthority() {
+	local pid="$(find_xscreensaver_pid)"
+	test -z "$pid" && return 1
+	eval home="~$(ps -o user= "$pid")"
+	echo "$home/.Xauthority"
+}
 
-if [ -z "$PIDFILE" -a -z "$LOGFILE" ]; then
-	if [ -z "$1" ]; then exit_syn; fi
+watch() {
+	local interval="$1"
+	local xauthority="${XAUTHORITY:-$(guess_xauthority)}"
+    echo "WATCH DISPLAY=$DISPLAY XAUTHORITY=$xauthority $XSCREEN_WATCH"
+	{ if ! DISPLAY="$DISPLAY" XAUTHORITY="$xauthority" $XSCREEN_WATCH; then
+            echo "WATCH failed, sleep $interval;"
+            sleep $interval
+    fi } | while read CMD ARGS; do
+        case $CMD in
+        BLANK | LOCK )
+            echo "$CMD" "$ARGS"
+            $MOTION_CTRL start
+            ;;
+        UNBLANK )
+            echo "$CMD" "$ARGS"
+            $MOTION_CTRL stop
+            ;;
+        RUN )
+            # pass, don't echo
+            ;;
+        * )
+            echo "???" "$CMD" "$ARGS"
+            ;;
+        esac
+    done
+}
 
-	mkdir -p "$PIDDIR"
-	PIDFILE="$PIDDIR/amtnd.pid"
-	LOGFILE="$PIDDIR/amtnd.log"
-
-	RETURN=1
-	case $1 in
-	start )
-		if start-stop-daemon -v -p "$PIDFILE" -S -x "$XSCREEN_CTRL" -N 10 -b -a "$(readlink -f "$0")" -- -p "$PIDFILE" -l "$LOGFILE"; then
-			mtn_reload
-			RETURN=0
-		fi
-		;;
-	stop )
-		if start-stop-daemon -v -p "$PIDFILE" -K -x "$XSCREEN_CTRL"; then
-			mtn_reload
-			RETURN=0
-		fi
-		;;
-	restart )
-		"$0" stop
-		if "$0" start; then RETURN=0; fi
-		;;
-	status )
-		PID="$(cat "$PIDFILE" 2>&-)"
-		if [ -z "$PID" ]; then pref="not ";
-		elif [ "$(ps -o cmd -p "$PID" --no-headers)" = "$XSCREEN_WATCH" ]; then suff=" ($PID)"; RETURN=0; else pref="not "; fi
-		echo "auto-motion is ${pref}running${suff}."
-		;;
-	* )
-		exit_syn
-		;;
-	esac
-	exit $RETURN
-fi
-
-###############################################################################
-# xscreensaver monitor
-###############################################################################
-
-if [ -z "$PIDFILE" -o -z "$LOGFILE" ]; then exit_syn; fi
-if [ -n "$1" ]; then exit_syn; fi
-
-{ $XSCREEN_WATCH & echo $! > "$PIDFILE"; } | while read CMD ARGS; do
-	case $CMD in
-	BLANK | LOCK )
-		echo ">>>" "$CMD" "$ARGS"
-		$MOTION_CTRL start
-		;;
-	UNBLANK )
-		echo ">>>" "$CMD" "$ARGS"
-		$MOTION_CTRL stop
-		;;
-	RUN )
-		# pass, don't echo
-		;;
-	* )
-		echo ">>>" "$CMD" "$ARGS"
-		;;
-	esac
-done >>"$LOGFILE"
+while true; do
+	watch 16
+done
