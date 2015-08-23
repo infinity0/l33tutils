@@ -1,6 +1,8 @@
 #!/bin/bash
 # Execute a command against decrypted file arguments.
 
+GNUPG="${GNUPG:-gpg}"
+
 USAGE="Usage: $0 [-h|-d] <CMDLINE>"
 VECHO=true
 
@@ -78,7 +80,7 @@ gpgx() {
 		local arg="${args[$i]}"
 		if [ "${arg%.gpg}" != "$arg" ]; then
 			local f=$(mktemp "$TMPDIR/plain.XXXXXXXX")
-			gpg -d "$arg" > "$f" || abort 5 "could not decrypt $arg"
+			$GNUPG -d "$arg" > "$f" || abort 5 "could not decrypt $arg"
 			sha256sum "$f" > "$f.sha256"
 			ln -s "$arg" "$f.orig"
 			args[$i]="$f"
@@ -90,7 +92,7 @@ gpgx() {
 	for f in "$TMPDIR"/*.orig; do
 		if ! sha256sum -c --status "${f%.orig}.sha256"; then
 			local old="$(readlink "$f")"
-			gpg -o "${f%.orig}.new" -e -r "$GNUPGEMAIL" "${f%.orig}" || abort 5 "could not encrypt ${f%.orig}"
+			$GNUPG -o "${f%.orig}.new" -e -r "$GNUPGEMAIL" "${f%.orig}" || abort 5 "could not encrypt ${f%.orig}"
 		fi
 	done
 	touch "$TMPDIR/done"
