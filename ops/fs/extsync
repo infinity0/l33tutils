@@ -82,19 +82,18 @@ fi
 D="$(abspath "${D:-.}")"
 test "${D#$BASE_L/}" != "$D" || abort 2 "not under local base $BASE_L: $D"
 
-# resolve direction
+RRSYNC="rrsync -avxz --no-g --no-o --delete --update"
+run_d() { test -r "$1/$2" && ( cd "$1" && "./$2" ); }
+
 case "$DIREC" in
 u|up)
-	SRC="${D}/"
-	DST="$BASE_R/${D#$BASE_L/}/"
+	run_d "${D}" extsync.pre_u.rc
+	$RRSYNC "${D}/" "$BASE_R/${D#$BASE_L/}/"
 	;;
 d|down)
-	SRC="$BASE_R/${D#$BASE_L/}/"
-	DST="${D}/"
+	$RRSYNC "$BASE_R/${D#$BASE_L/}/" "${D}/"
+	run_d "${D}" extsync.post_d.rc
 	;;
 esac
-
-# execute sync
-rrsync -avxz --no-g --no-o --delete --update "$SRC" "$DST"
 
 done
