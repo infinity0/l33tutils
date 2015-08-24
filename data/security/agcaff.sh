@@ -98,7 +98,9 @@ agcaff_sign() {
 
 	set -x
 	cp -aL --no-preserve=ownership -t "$HOME" "$bhome/.caff" "$shome/.caffrc" "$shome/.gnupg"
+	ln -sf ../../.gnupg/private-keys-v1.d "$HOME/.caff/gnupghome"
 	caff --no-download --no-export-old --no-mail "$(cat $bhome/ksp-keys.txt)"
+	rm -f "$HOME/.caff/gnupghome/private-keys-v1.d"
 	cp -aL --no-preserve=ownership -t "$bhome" "$HOME/.caff"
 	remoteugid=$(stat -c %u:%g "$bhome/ksp-keys.txt")
 	if test "$(id -u):$(id -g)" != "$remoteugid"; then
