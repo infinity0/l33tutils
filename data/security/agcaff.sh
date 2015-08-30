@@ -3,7 +3,7 @@
 #
 # You need:
 # - an encrypted partition only unlocked offline for holding your master secret key
-#   - you must manually put your .caffrc and .gnupg here, before using this tool
+#   - you must manually put your .gnupg with your master secret key here, before using this tool
 # - an unencrypted partition for transporting data between online/offline systems
 #   - this tool will overwrite .caff, $0, $0.state, and ksp-keys.txt
 #
@@ -65,7 +65,7 @@ agcaff_init() {
 
 	set -x
 	caff --no-sign --no-export-old --no-mail "$(cat $bhome/ksp-keys.txt)"
-	cp -aL --no-preserve=ownership -t "$bhome" "$HOME/.caff"
+	cp -aL --no-preserve=ownership -t "$bhome" "$HOME/.caff" "$HOME/.caffrc"
 	test "$SCRIPT_DIR" != "$bhome" && cp -aL --no-preserve=ownership -t "$bhome" "$0"
 	echo sign > "$bhome/$STATE_FILE"
 	set +x
@@ -93,11 +93,11 @@ agcaff_sign() {
 		test -d "$shome" || abort "sdev/srel did not point to a valid shome: $sdev $srel"
 	fi
 	test -w "$bhome/.caff" || abort "$bhome/.caff is not writable"
-	test -d "$shome" || abort "set shome to a directory on your secure partition (where .caffrc and .gnupg are)."
+	test -d "$shome" || abort "set shome to a directory on your secure partition (where .gnupg is)."
 	echo "using secure offline medium $shome"
 
 	set -x
-	cp -aL --no-preserve=ownership -t "$HOME" "$bhome/.caff" "$shome/.caffrc" "$shome/.gnupg"
+	cp -aL --no-preserve=ownership -t "$HOME" "$bhome/.caff" "$bhome/.caffrc" "$shome/.gnupg"
 	ln -sf ../../.gnupg/private-keys-v1.d "$HOME/.caff/gnupghome"
 	caff --no-download --no-export-old --no-mail "$(cat $bhome/ksp-keys.txt)"
 	rm -f "$HOME/.caff/gnupghome/private-keys-v1.d"
@@ -116,7 +116,7 @@ agcaff_post() {
 	test -s "$bhome/ksp-keys.txt" || abort "\$bhome/ksp-keys.txt empty; did you run \`$0 init\` on your online system?"
 
 	set -x
-	cp -aL --no-preserve=ownership -t "$HOME" "$bhome/.caff"
+	cp -aL --no-preserve=ownership -t "$HOME" "$bhome/.caff" "$bhome/.caffrc"
 	caff --no-download --no-sign --no-export-old "$(cat $bhome/ksp-keys.txt)"
 	echo init > "$bhome/$STATE_FILE"
 	mv "$bhome/ksp-keys.txt" "$bhome/ksp-keys.txt.done"
