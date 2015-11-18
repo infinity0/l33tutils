@@ -1,6 +1,11 @@
 ;;;; merlin-extras
 ;;;; enhancements to merlin, an OCaml IDE plugin
 ;
+;;; Dependencies:
+;
+; You need to install the "company" elisp package. On Debian you can do this
+; by running `aptitude install elpa-company`.
+;
 ;;; Behaviours:
 ;
 ; - Automatically show the type of the expression at point.

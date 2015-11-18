@@ -1,6 +1,11 @@
 ;;;; fspeedbar
 ;;;; fixed speedbar in the same frame, similar to sr-speedbar but simpler
 ;
+;;; Dependencies:
+;
+; This depends on the "speedbar" elisp package, but this should come
+; pre-installed with modern versions of emacs (>= 24).
+;
 ;;; Keybindings:
 ;
 ; Super-s       - toggle speedbar display
