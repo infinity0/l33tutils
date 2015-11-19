@@ -3,12 +3,14 @@
 ;
 ;;; Dependencies:
 ;
-; You need to install the "company" elisp package. On Debian you can do this
-; by running `aptitude install elpa-company`.
+; This depends on the "merlin" and "tuareg" elisp packages. If you have opam,
+; you can install them by running `opam install merlin tuareg`.
 ;
 ;;; Behaviours:
 ;
-; - Automatically show the type of the expression at point.
+; - Automatically show the type of the expression at point (visual cursor),
+;   optionally after a timeout. The behaviour may be toggled interactively.
+;
 ;   Small types go in minibuffer, large types go in a new side window "below".
 ;   The side window auto-closes when the point moves to a non-expression.
 ;
@@ -17,15 +19,31 @@
 ;; First, setup up merlin as per their instructions. Then:
 ;; Add this file to your load-path, then in init.el:
 ;
-;(autoload 'merlin-auto-type-enclosing "merlin-extra" nil t)
-;(add-hook 'tuareg-mode-hook 'merlin-auto-type-enclosing)
+;(add-hook 'merlin-mode-hook 'merlin-extra-init)
+;(autoload 'merlin-extra-init "merlin-extra" nil t)
+;(global-set-key (kbd "C-c M-t") 'merlin-toggle-auto-type)
 ;
 
-;;; enable e.g. with (add-hook 'tuareg-mode-hook 'merlin-auto-type-enclosing)
+(defcustom merlin-enable-auto-type nil
+  "Whether to automatically show the type of the expression at the cursor.")
 
-(defun merlin-auto-type-enclosing ()
-  "Automatically run type-enclosing after every command"
-  (add-hook 'post-command-hook 'merlin-type-enclosing nil t))
+(defcustom merlin-timeout-auto-type 0.5
+  "Idle timeout when automatically showing types.")
+
+(defun merlin-extra-init ()
+  "Initialise merlin-extra"
+  (if (= merlin-timeout-auto-type 0)
+      (add-hook 'post-command-hook 'merlin--maybe-type-enclosing nil t)
+    (run-with-idle-timer merlin-timeout-auto-type t 'merlin--maybe-type-enclosing)
+    (add-hook 'post-command-hook 'merlin--kill-type nil t)))
+
+(defun merlin--maybe-type-enclosing ()
+  (if merlin-enable-auto-type (merlin-type-enclosing)))
+
+(defun merlin-toggle-auto-type ()
+  "Toggle auto-show-type behaviour."
+  (interactive)
+  (setq merlin-enable-auto-type (not merlin-enable-auto-type)))
 
 ; see also http://www.lunaryorn.com/2015/04/29/the-power-of-display-buffer-alist.html
 (add-to-list 'display-buffer-alist
