@@ -19,8 +19,7 @@
 ;; First, setup up merlin as per their instructions. Then:
 ;; Add this file to your load-path, then in init.el:
 ;
-;(add-hook 'merlin-mode-hook 'merlin-extra-init)
-;(autoload 'merlin-extra-init "merlin-extra" nil t)
+;(with-eval-after-load "merlin" (load "merlin-extra"))
 ;(global-set-key (kbd "C-c M-t") 'merlin-toggle-auto-type)
 ;
 
@@ -30,15 +29,26 @@
 (defcustom merlin-timeout-auto-type 0.5
   "Idle timeout when automatically showing types.")
 
-(defun merlin-extra-init ()
-  "Initialise merlin-extra"
+; set up auto-run hooks
+; TODO: store these somewhere so that they may be cancelled
+(with-eval-after-load "merlin"
   (if (= merlin-timeout-auto-type 0)
       (add-hook 'post-command-hook 'merlin--maybe-type-enclosing nil t)
     (run-with-idle-timer merlin-timeout-auto-type t 'merlin--maybe-type-enclosing)
     (add-hook 'post-command-hook 'merlin--kill-type nil t)))
 
 (defun merlin--maybe-type-enclosing ()
-  (if merlin-enable-auto-type (merlin-type-enclosing)))
+  (interactive)
+  (if (and merlin-enable-auto-type (bound-and-true-p merlin-mode))
+    ; copied from merlin-type-enclosing, except we don't show "no results"
+    (progn
+      (merlin/sync)
+      (if (region-active-p)
+          (merlin--type-region)
+        (if (merlin--type-enclosing-query)
+          (progn
+            (merlin-type-enclosing-go-up)
+            (merlin--type-enclosing-after)))))))
 
 (defun merlin-toggle-auto-type ()
   "Toggle auto-show-type behaviour."
