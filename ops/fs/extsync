@@ -1,47 +1,13 @@
 #!/bin/sh
 # rsync directories to a remote host whilst maintaining path structure.
-#
-# TODO(infinity0): add a show-diff option.
-# unfortunately this will req something other than rsync.
 
-USAGE="Usage: $0 -r <REMOTE> [-l <LOCAL>] <DIRECTION> [<DIR>]"
+USAGE="Usage: $0 -r <REMOTE> [-l <LOCAL>] [OPTIONS] <DIRECTION> <DIR> [<DIR> ...]"
+
+abspath() { cd "$1"; pwd; cd "$OLDPWD"; }
+run_d() { test -r "$1/$2" && ( cd "$1" && "./$2" ); }
+
 DRYRUN=false
 CONFIRM=true
-
-: "${BASE_L:=$HOME}"
-while getopts r:l:nyh o; do
-	case $o in
-	r ) BASE_R="$OPTARG";;
-	l ) BASE_L="$OPTARG";;
-	n ) DRYRUN=true;;
-	y ) CONFIRM=false;;
-	h )
-		cat <<-EOF
-		$USAGE
-
-		rsync directories to a remote host whilst maintaining path structure.
-
-		Arguments:
-		DIRECTION           Up = sync local to remote; Down = sync remote to local.
-		DIR                 Directory to sync. If \$DIR = \$LOCAL/\$RELATIVE,
-		                    then \$DIR will be synced to/from \$REMOTE/\$RELATIVE.
-
-		Options:
-		  -r REMOTE         Path to remote base dir, in the form accepted by ssh(1).
-		  -l LOCAL          Path to local base dir, \$HOME by default.
-		  -n                Print the command to be run, rather than running it.
-		  -y                Skip confirmation request.
-		  -h                This help text.
-		EOF
-		exit 1
-		;;
-	\? ) echo $USAGE; exit 1;;
-	esac
-done
-shift `expr $OPTIND - 1`
-
-abort() { echo >&2 "$2"; exit $1; }
-abspath() { cd "$1"; pwd; cd "$OLDPWD"; }
 rrsync() {
 	if $DRYRUN; then
 		echo "${PS4}rsync $@"
@@ -54,6 +20,116 @@ rrsync() {
 	fi
 	rsync "$@"
 }
+
+RFLAGS="-acvxz --no-g --no-o --delete"
+runsync() {
+	local direc="$1"
+	local dir_l="$2"
+	local dir_r="$3"
+	case "$direc" in
+	u|up)
+		run_d "$dir_l" extsync.pre_u.rc
+		rrsync $RFLAGS -u "$dir_l/" "$dir_r/"
+		;;
+	d|down)
+		rrsync $RFLAGS -u "$dir_r/" "$dir_l/"
+		run_d "$dir_l" extsync.post_d.rc
+		;;
+	esac
+}
+
+type colordiff >/dev/null 2>&1 && DIFF=colordiff || {
+	echo >&2 "colordiff(1) not found; using diff(1) instead"
+	DIFF=diff
+}
+rundiff() {
+	local direc="$1"
+	local dir_l="$2"
+	local dir_r="$3"
+	local tempdir="$(mktemp -d)"
+	local cleanup="rm -rf $tempdir"
+	trap "$cleanup" HUP INT QUIT TERM KILL
+	rsync $RFLAGS -q "$dir_l/" "$tempdir/"
+	rsync $RFLAGS -q "$dir_r/" "$tempdir/"
+	case "$direc" in
+	u|up)
+		$DIFF -Nru "$tempdir/" "$dir_l/" | less -R
+		;;
+	d|down)
+		$DIFF -Nru "$dir_l/" "$tempdir/" | less -R
+		;;
+	esac
+	$cleanup
+}
+
+run() {
+	local base_l="$1"
+	local base_r="$2"
+	local cmd="$3"
+	local direc="$4"
+	local dir="$5"
+	# resolve path
+	if ! test -d "$dir"; then
+		if ! test -d "$base_l/$dir"; then
+			echo >&2 "not a directory: $dir or $base_l/$dir"
+			return 1
+		else
+			dir="$base_l/$dir"
+		fi
+	fi
+	local dir_l="$(abspath "${dir:-.}")"
+	test "${dir_l#$base_l/}" != "$dir_l" || { echo >&2 "not under local base $base_l: $dir"; return 1; }
+	local dir_r="$base_r/${dir_l#$base_l/}"
+
+	$cmd "$direc" "$dir_l" "$dir_r"
+}
+
+abort() { echo >&2 "$2"; exit $1; }
+BASE_L="${HOME:-}"
+RUNCMD=runsync
+while getopts r:l:dnyh o; do
+	case $o in
+	r ) BASE_R="$OPTARG";;
+	l ) BASE_L="$OPTARG";;
+	d ) RUNCMD=rundiff;;
+	n ) DRYRUN=true;;
+	y ) CONFIRM=false;;
+	h )
+		cat <<-EOF
+		$USAGE
+
+		rsync directories with a remote host whilst maintaining path structure.
+
+		This should be largely compatible with unison(1) when using the same BASE
+		directories (called "roots" in unison), but is a bit easier to automate.
+
+		This command runs several instances of ssh(1). It is recommended that you
+		use a remote Host where you've configured a ControlPath; see ssh_config(5)
+		for details. Before running this script, run \`ssh -M \$host\` to set up the
+		master connection, and this script will then run through that. (This tip is
+		useful for unison too.)
+
+		Arguments:
+		DIRECTION           Up = sync local to remote; Down = sync remote to local.
+		DIR                 Directory to sync. If \$DIR = \$LOCAL/\$RELATIVE,
+		                    then \$DIR will be synced to/from \$REMOTE/\$RELATIVE.
+
+		Options:
+		  -r REMOTE         Path to remote base dir, in the form accepted by ssh(1).
+		  -l LOCAL          Path to local base dir, \$HOME by default.
+		  -n                Print the command to be run, rather than running it.
+		  -d                Print a diff of what rsync would apply. Practically,
+		                    this syncs to a temporary directory then runs diff(1) on
+		                    it. This is slower but prettier than unison(1).
+		  -y                Skip confirmation request.
+		  -h                This help text.
+		EOF
+		exit 1
+		;;
+	\? ) echo $USAGE; exit 1;;
+	esac
+done
+shift `expr $OPTIND - 1`
 
 DIREC="$1"
 shift
@@ -70,30 +146,5 @@ test -n "$BASE_R" || abort 2 "no remote selected; use -r or BASE_R="
 test -n "$*" || abort 2 "no paths selected"
 
 for D in "$@"; do
-
-# resolve path
-if ! test -d "$D"; then
-	if ! test -d "$BASE_L/$D"; then
-		abort 2 "not a directory: $D or $BASE_L/$D"
-	else
-		D="$BASE_L/$D"
-	fi
-fi
-D="$(abspath "${D:-.}")"
-test "${D#$BASE_L/}" != "$D" || abort 2 "not under local base $BASE_L: $D"
-
-RRSYNC="rrsync -avxz --no-g --no-o --delete --update"
-run_d() { test -r "$1/$2" && ( cd "$1" && "./$2" ); }
-
-case "$DIREC" in
-u|up)
-	run_d "${D}" extsync.pre_u.rc
-	$RRSYNC "${D}/" "$BASE_R/${D#$BASE_L/}/"
-	;;
-d|down)
-	$RRSYNC "$BASE_R/${D#$BASE_L/}/" "${D}/"
-	run_d "${D}" extsync.post_d.rc
-	;;
-esac
-
+	run "$BASE_L" "$BASE_R" "$RUNCMD" "$DIREC" "$D"
 done
