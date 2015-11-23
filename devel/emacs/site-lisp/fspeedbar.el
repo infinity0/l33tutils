@@ -8,10 +8,16 @@
 ;
 ;;; Keybindings:
 ;
-; Super-s       - toggle speedbar display
-; u             - toggle between previous and current speedbar display mode
-; C-scroll-up,  - cycle through display modes listed in `fspeedbar-scroll-mode-alist`,
+; Super-s       - Toggle speedbar display
+; u             - Toggle between previous and current speedbar display mode
+; C-scroll-up,  - Cycle through display modes listed in `fspeedbar-scroll-mode-alist`,
 ; C-scroll-down   which defaults to the ones in `speedbar-initial-expansion-mode-alist`
+;
+;;; Behaviours:
+;
+; - Whether the speedbar is shown will be persisted by `desktop-save` and
+;   anything else that uses it such as nameses. The directory of the "files"
+;   view is also persisted. (In the future, more things will be too.)
 ;
 ;;; Usage and configuration:
 ;
@@ -19,20 +25,49 @@
 ;
 ;(autoload 'speedbar-mode "speedbar" nil t)
 ;(autoload 'fspeedbar-toggle "fspeedbar" nil t)
+;(autoload 'fspeedbar-sess-load "fspeedbar" nil t)
+;(add-to-list 'desktop-buffer-mode-handlers '(speedbar-mode . fspeedbar-sess-load))
 ;(global-set-key (kbd "s-s") 'fspeedbar-toggle)
 ;
 ;; Optional: don't scroll through "Quick Buffers"
 ;(setq fspeedbar-scroll-mode-alist '("files" "buffers"))
 ;
 
+(defcustom fspeedbar-width 0.16
+  "Default width of fspeedbar.")
+
+(defcustom fspeedbar-side 'left
+  "Default side of the frame that fspeedbar will be shown at.")
+
 ;;; basic functionality
 
 (defconst fspeedbar-buffer-name "*SPEEDBAR*"
   "The buffer name of fspeedbar.")
 
+; fix the position of the speedbar
+; see http://www.lunaryorn.com/2015/04/29/the-power-of-display-buffer-alist.html
+(add-to-list 'display-buffer-alist
+  `((lambda (buffer _) (equal buffer fspeedbar-buffer-name))
+    (display-buffer-reuse-window
+     display-buffer-in-side-window)
+    (side            . ,fspeedbar-side  )
+    (window-width    . ,fspeedbar-width )))
+
 (defun fspeedbar-open ()
   "Open the fixed speedbar window."
   (interactive)
+  (fspeedbar--open t nil))
+
+(defun fspeedbar-sess-save (desktop-dirname)
+  `(,default-directory))
+
+(defun fspeedbar-sess-load (buffer-file-name buffer-name desktop-buffer-misc)
+  (fspeedbar--open nil (car desktop-buffer-misc)))
+
+(defun fspeedbar--open (dedicate default-dir)
+  ; needed here to work around some load-save bugs...
+  (when dedicate
+    (set-window-dedicated-p (get-buffer-window fspeedbar-buffer-name) t))
   (setq speedbar-buffer (get-buffer-create fspeedbar-buffer-name)
     speedbar-frame (selected-frame)
     dframe-attached-frame (selected-frame)
@@ -44,22 +79,20 @@
   (speedbar-reconfigure-keymaps)
   (speedbar-update-contents)
   (speedbar-set-timer 1)
+  (setq desktop-save-buffer 'fspeedbar-sess-save)
   (display-buffer fspeedbar-buffer-name)
-  (set-window-dedicated-p (get-buffer-window fspeedbar-buffer-name) t))
+  (when dedicate
+    (set-window-dedicated-p (get-buffer-window fspeedbar-buffer-name) t))
+  (when default-dir
+    (setq default-directory default-dir)
+    (speedbar-update-contents))
+  (current-buffer))
 
 (defun fspeedbar-close ()
   "Close the fixed speedbar window."
   (interactive)
   (delete-window (get-buffer-window fspeedbar-buffer-name))
   (kill-buffer fspeedbar-buffer-name))
-
-; see also http://www.lunaryorn.com/2015/04/29/the-power-of-display-buffer-alist.html
-(add-to-list 'display-buffer-alist
-  '((lambda (buffer _) (equal buffer fspeedbar-buffer-name))
-    (display-buffer-reuse-window
-     display-buffer-in-side-window)
-    (side            . left   )
-    (window-width    . 0.2    )))
 
 (defun fspeedbar-toggle ()
   "Toggle the fixed speedbar window."
