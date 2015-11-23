@@ -6,6 +6,10 @@
 ; This depends on the "merlin" and "tuareg" elisp packages. If you have opam,
 ; you can install them by running `opam install merlin tuareg`.
 ;
+;;; Keybindings:
+;
+; C-c M-t       - Toggle automatic showing of type of expression at point.
+;
 ;;; Behaviours:
 ;
 ; - Automatically show the type of the expression at point (visual cursor),
