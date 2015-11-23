@@ -1,0 +1,3 @@
+[submodule "devel/emacs/site-lisp/nameses"]
+	path = devel/emacs/site-lisp/nameses
+	url = https://gist.github.com/jannisteunissen/8960595
