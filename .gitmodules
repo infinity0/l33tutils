@@ -1,3 +1,6 @@
 [submodule "devel/emacs/site-lisp/nameses"]
 	path = devel/emacs/site-lisp/nameses
 	url = https://gist.github.com/jannisteunissen/8960595
+[submodule "devel/emacs/site-lisp/undo-tree"]
+	path = devel/emacs/site-lisp/undo-tree
+	url = https://github.com/emacsmirror/undo-tree
