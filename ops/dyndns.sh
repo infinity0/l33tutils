@@ -22,7 +22,7 @@ test -n "$NS_ZONE" || { echo >&2 "conf didn't define NS_ZONE"; exit 1; }
 BASE="${CONF%.conf}"
 
 IPADDR="$(curl -s https://wtfismyip.com/text || curl -s https://api.ipify.org/?format=text || curl -s https://icanhazip.com/)"
-test -n "$IPADDR" || exit 1
+if ! echo "$IPADDR" | grep -q -P '^\d+\.\d+\.\d+\.\d+$' -; then echo >&2 "error getting IP: $IPADDR"; exit 1; fi
 OLDIP="$(cat "$BASE.addr")"
 test "$IPADDR" = "$OLDIP" && exit 0
 echo "$IPADDR" > "$BASE.addr"
