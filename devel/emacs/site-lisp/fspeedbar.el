@@ -29,15 +29,15 @@
 ;(add-to-list 'desktop-buffer-mode-handlers '(speedbar-mode . fspeedbar-sess-load))
 ;(global-set-key (kbd "s-s") 'fspeedbar-toggle)
 ;
-;; Optional: don't scroll through "Quick Buffers"
-;(setq fspeedbar-scroll-mode-alist '("files" "buffers"))
-;
 
 (defcustom fspeedbar-width 0.16
   "Default width of fspeedbar.")
 
 (defcustom fspeedbar-side 'left
   "Default side of the frame that fspeedbar will be shown at.")
+
+(defcustom fspeedbar-no-quick-buffers nil
+  "If true, then hide Quick Buffers; 'b' will bring up Buffers instead.")
 
 ;;; basic functionality
 
@@ -182,3 +182,16 @@
     (lambda () (interactive)
       (speedbar-change-initial-expansion-list
        (list-cycle-prev speedbar-initial-expansion-list-name fspeedbar-scroll-mode-alist)))))
+
+;;; Hide "Quick Buffers"
+;;; Personally I get annoyed by it because it sometimes randomly changes the
+;;; directory in the "File" mode when you switch back to it.
+
+(when fspeedbar-no-quick-buffers
+  ; show "Buffers" when you hit "b" instead of "Quick Buffers"
+  (with-eval-after-load "speedbar"
+    (define-key speedbar-key-map "b"
+      (lambda () (interactive)
+        (speedbar-change-initial-expansion-list "buffers"))))
+  ; don't scroll through "Quick Buffers"
+  (setq fspeedbar-scroll-mode-alist '("files" "buffers")))
