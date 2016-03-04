@@ -2,14 +2,18 @@
 ;
 ; TL;DR installation:
 ;
-; # apt-get install opam elpa-company tuareg-mode ocp-indent
-; # opam install merlin # or tuareg-mode ocp-indent here instead of via apt-get
+; # apt-get install elpa-company  opam tuareg-mode ocp-indent  cargo elpa-rust-mode dash-el s-el
+; $ opam install merlin; cargo install racer
 ; $ git submodule update --init # or git clone --recursive $URL/OF/THIS/REPO && cd $PATH/TO/THIS/FILE
+; $ ( cd /usr/src && rm -rf ./rustc[-_]* && apt-get source rustc="$(dpkg-query -f '${Version}' -W rustc)" && ln -sf rustc-* rustc );
 ; $ test -f infinity0-site-file.el && cat >> ~/.profile infinity0-login-profile
 ; $ test -f infinity0-site-file.el && cat >> ~/.emacs.d/init.el <<EOF
 ; > (add-to-list 'load-path "$PWD")
 ; > (load "infinity0-site-file")
 ; > EOF
+;
+; For rust completion to work properly, you need to run the `apt-get source`
+; line above, after every time you upgrade rustc.
 ;
 ; grep this file for "(kbd" to see the extra enabled keymaps; RTFS for docs. :)
 
@@ -64,6 +68,14 @@
 ;(setq company-idle-delay 0)
 ; arguably looks a bit nicer
 ;(setq company-tooltip-align-annotations t)
+
+;;; rust, rust-mode
+(if (not (fboundp 'rust-mode)) (load "rust-mode-autoloads"))
+;; rust-mode with racer/company completion
+(autoload 'racer-mode "racer" nil t)
+(add-hook 'rust-mode-hook 'racer-mode)
+(add-hook 'racer-mode-hook 'eldoc-mode)
+(add-hook 'racer-mode-hook 'company-mode)
 
 ;;; ocaml, tuareg
 (if (not (fboundp 'tuareg-mode)) (load "tuareg-site-file"))

@@ -4,3 +4,9 @@ if [ -f ~/.opam/opam-init/init.sh ]; then
 	export OPAMKEEPBUILDDIR=true
 	export OCAMLPARAM="_,bin-annot=1"
 fi
+
+# set rust env
+if [ -d "$HOME/.cargo/bin" ] ; then
+	PATH="$HOME/.cargo/bin:$PATH"
+	export RUST_SRC_PATH=/usr/src/rustc/src
+fi
