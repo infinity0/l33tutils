@@ -7,3 +7,6 @@
 [submodule "devel/emacs/site-lisp/iedit"]
 	path = devel/emacs/site-lisp/iedit
 	url = https://github.com/victorhge/iedit
+[submodule "devel/emacs/site-lisp/emacs-racer"]
+	path = devel/emacs/site-lisp/emacs-racer
+	url = https://github.com/racer-rust/emacs-racer
