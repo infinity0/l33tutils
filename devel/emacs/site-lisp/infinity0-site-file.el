@@ -5,8 +5,11 @@
 ; # apt-get install opam elpa-company tuareg-mode ocp-indent
 ; # opam install merlin # or tuareg-mode ocp-indent here instead of via apt-get
 ; $ git submodule update --init # or git clone --recursive $URL/OF/THIS/REPO && cd $PATH/TO/THIS/FILE
-; $ test -f infinity0-site-file.el && echo >> ~/.emacs.d/init.el "(add-to-list 'load-path \"$PWD\")"
-; $ test -f infinity0-site-file.el && echo >> ~/.emacs.d/init.el "(load \"infinity0-site-file\")"
+; $ test -f infinity0-site-file.el && cat >> ~/.profile infinity0-login-profile
+; $ test -f infinity0-site-file.el && cat >> ~/.emacs.d/init.el <<EOF
+; > (add-to-list 'load-path "$PWD")
+; > (load "infinity0-site-file")
+; > EOF
 ;
 ; grep this file for "(kbd" to see the extra enabled keymaps; RTFS for docs. :)
 
@@ -36,8 +39,34 @@
 ;;; undo-tree
 (require 'undo-tree)
 
+;;; company-mode completion
+(require 'cl) ; for some reason I need this; see https://github.com/racer-rust/emacs-racer/issues/14
+(if (not (fboundp 'company-mode)) (load "company-autoloads"))
+(with-eval-after-load "company"
+  ; not yet in Debian package, just copy it from upstream git
+  (if (not (fboundp 'company-indent-or-complete-common))
+    (defun company-indent-or-complete-common ()
+      "Indent the current line or region, or complete the common part."
+      (interactive)
+      (cond
+       ((use-region-p)
+        (indent-region (region-beginning) (region-end)))
+       ((let ((old-point (point))
+              (old-tick (buffer-chars-modified-tick))
+              (tab-always-indent t))
+          (call-interactively #'indent-for-tab-command)
+          (when (and (eq old-point (point))
+                     (eq old-tick (buffer-chars-modified-tick)))
+            (company-complete-common))))))))
+(global-set-key (kbd "TAB") 'company-indent-or-complete-common)
+; uncomment for "in-your-face" behaviour
+;(setq company-minimum-prefix-length 0)
+;(setq company-idle-delay 0)
+; arguably looks a bit nicer
+;(setq company-tooltip-align-annotations t)
+
 ;;; ocaml, tuareg
-(load "tuareg-site-file")
+(if (not (fboundp 'tuareg-mode)) (load "tuareg-site-file"))
 ;; tuareg with ocp-indent
 (autoload 'ocp-setup-indent "ocp-indent" nil t)
 (add-hook 'tuareg-mode-hook 'ocp-setup-indent t)
@@ -50,9 +79,10 @@
 (with-eval-after-load "merlin" (load "merlin-extra"))
 (global-set-key (kbd "C-c M-t") 'merlin-toggle-auto-type)
 ;; merlin with company-mode completion
-(autoload 'company-mode "company" nil t)
 (add-hook 'merlin-mode-hook 'company-mode)
-(with-eval-after-load "company" (add-to-list 'company-backends 'merlin-company-backend))
+(with-eval-after-load "merlin"
+  (with-eval-after-load "company"
+    (add-to-list 'company-backends 'merlin-company-backend)))
 ;; merlin with iedit-mode refactoring
 (autoload 'iedit-mode "iedit" nil t)
 (autoload 'merlin-iedit-occurrences "merlin-iedit" nil t)

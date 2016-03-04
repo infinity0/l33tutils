@@ -1,0 +1,6 @@
+# set ocaml env
+if [ -f ~/.opam/opam-init/init.sh ]; then
+	. "$HOME/.opam/opam-init/init.sh" >/dev/null 2>/dev/null || true
+	export OPAMKEEPBUILDDIR=true
+	export OCAMLPARAM="_,bin-annot=1"
+fi
