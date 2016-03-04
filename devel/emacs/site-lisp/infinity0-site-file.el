@@ -44,7 +44,9 @@
 (require 'undo-tree)
 
 ;;; company-mode completion
-(require 'cl) ; for some reason I need this; see https://github.com/racer-rust/emacs-racer/issues/14
+; uncomment the following line if you see errors about "void-function block" or
+; "Symbol's function definition is void: block"; see racer-rust/emacs-racer#14
+;(require 'cl)
 (if (not (fboundp 'company-mode)) (load "company-autoloads"))
 (with-eval-after-load "company"
   ; not yet in Debian package, just copy it from upstream git
