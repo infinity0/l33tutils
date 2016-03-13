@@ -45,12 +45,12 @@
 
 ;;; company-mode completion
 ; uncomment the following line if you see errors about "void-function block" or
-; "Symbol's function definition is void: block"; see racer-rust/emacs-racer#14
+; "Symbol's function definition is void: block"; see rust-lang/rust-mode#130
 ;(require 'cl)
-(if (not (fboundp 'company-mode)) (load "company-autoloads"))
+(unless (fboundp 'company-mode) (load "company-autoloads"))
 (with-eval-after-load "company"
   ; not yet in Debian package, just copy it from upstream git
-  (if (not (fboundp 'company-indent-or-complete-common))
+  (unless (fboundp 'company-indent-or-complete-common)
     (defun company-indent-or-complete-common ()
       "Indent the current line or region, or complete the common part."
       (interactive)
@@ -72,7 +72,7 @@
 ;(setq company-tooltip-align-annotations t)
 
 ;;; rust, rust-mode
-(if (not (fboundp 'rust-mode)) (load "rust-mode-autoloads"))
+(unless (fboundp 'rust-mode) (load "rust-mode-autoloads"))
 ;; rust-mode with racer/company completion
 (autoload 'racer-mode "racer" nil t)
 (add-hook 'rust-mode-hook 'racer-mode)
@@ -80,7 +80,7 @@
 (add-hook 'racer-mode-hook 'company-mode)
 
 ;;; ocaml, tuareg
-(if (not (fboundp 'tuareg-mode)) (load "tuareg-site-file"))
+(unless (fboundp 'tuareg-mode) (load "tuareg-site-file"))
 ;; tuareg with ocp-indent
 (autoload 'ocp-setup-indent "ocp-indent" nil t)
 (add-hook 'tuareg-mode-hook 'ocp-setup-indent t)
