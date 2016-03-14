@@ -71,6 +71,16 @@
 ; arguably looks a bit nicer
 ;(setq company-tooltip-align-annotations t)
 
+;;; code folding
+(autoload 'hideshowvis-enable "hideshowvis" "Highlight foldable regions")
+(with-eval-after-load "hideshowvis" (hideshowvis-symbols))
+(with-eval-after-load "hideshow" (load "hideshow-extra") (hs-set-keys "\\" "|"))
+(dolist (hook (list
+    'emacs-lisp-mode-hook
+    'rust-mode-hook
+    'tuareg-mode-hook))
+  (add-hook hook 'hideshowvis-enable))
+
 ;;; rust, rust-mode
 (unless (fboundp 'rust-mode) (load "rust-mode-autoloads"))
 ;; rust-mode with racer/company completion

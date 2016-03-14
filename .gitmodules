@@ -10,3 +10,6 @@
 [submodule "devel/emacs/site-lisp/emacs-racer"]
 	path = devel/emacs/site-lisp/emacs-racer
 	url = https://github.com/racer-rust/emacs-racer
+[submodule "devel/emacs/site-lisp/hideshowvis"]
+	path = devel/emacs/site-lisp/hideshowvis
+	url = https://github.com/emacsmirror/hideshowvis
