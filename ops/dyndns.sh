@@ -1,7 +1,7 @@
 #!/bin/sh
 # Simple wrapper around nsupdate. Requires stun(1) from the stun-client package.
 #
-# Usage: $0 <NAME.conf>
+# Usage: $0 <NAME.conf> <FAILURE CMD>
 #
 # NAME.conf is a shell snippet that defines:
 # NS_AUTH - authoritative server to submit updates to
@@ -15,6 +15,7 @@
 # TODO: queue prev results and only change if multiple sources agree
 
 CONF="$1"
+shift
 test -f "$CONF" || { echo >&2 "not a file: $CONF"; exit 2; }
 
 . "$(readlink -f "$CONF")"
@@ -64,10 +65,17 @@ IPADDR="$(cat "$BASE.addr.tmp")"
 if ! echo "$IPADDR" | grep -q -P '^\d+\.\d+\.\d+\.\d+$' -; then
 	echo >&2 "error getting IP: $IPADDR"
 	rm "$BASE.addr.tmp"
+	DAYSSINCE="$((($(date +%s) - $(stat -c%Y "$BASE.addr")) / 60 / 60 / 24))"
+	# if we have not successfully gotten our IP address in N full days, then
+	# run the failure command with probability 1 in (N+1).
+	if [ "$(shuf -i 1-"$((DAYSSINCE + 1))" -n 1)" = 1 ]; then
+		echo >&2 "running failure command"
+		( set -x; "$@" )
+	fi
 	exit 1
 fi
 
-test "$IPADDR" = "$OLDIP" && exit 0
+test "$IPADDR" = "$OLDIP" && { rm "$BASE.addr.tmp"; touch "$BASE.addr"; exit 0; }
 mv -f "$BASE.addr.tmp" "$BASE.addr"
 nsupdate -k "$BASE.key" -v <<EOF
 server $NS_AUTH
