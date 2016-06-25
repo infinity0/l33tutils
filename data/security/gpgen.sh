@@ -1,23 +1,23 @@
 #!/bin/bash
 # Generate a "perfect" GPG key, namely:
 # - separate uids for name and emails
-# - separate keys each for certify sign auth, expire=1y
-# - separate key for encryption, expire=90d
+# - separate keys each for certify/sign/auth, expire=15m
+# - separate key for encryption, expire=9m
 #
 # Tested against GPG 2.1.11, may not work with other versions
 #
 # Other modes:
-# -u: No-prompt update expiry dates of your master and subkeys
+# -u: No-prompt update expiry dates of your C master and S/A subkeys.
 # -e: No-prompt generate new encryption subkey.
 
 KEYTYPE_CSA=11 # ECC
 KEYPARAM_CSA="1
-y" # ECC Ed25519, then pass gnupg 2.1 warning
+y" # ECC Ed25519, then pass gnupg 2.1 warning about "non-standard"
 EXPIRE_CSA="${EXPIRE_CSA:-15m}" # 1 year + 3 months grace period
 
 KEYTYPE_E=12 # ECC
 KEYPARAM_E="1
-y" # ECC Curve25519, then pass gnupg 2.1 warning
+y" # ECC Curve25519, then pass gnupg 2.1 warning about "non-standard"
 EXPIRE_E="${EXPIRE_E:-9m}" # 6 months + 3 months grace period
 
 NOEXPORT=false
@@ -30,7 +30,7 @@ while getopts 'eun' o; do
 	\? ) cat >&2 <<eof
 Usage: $0 NAME [EMAIL ..]
        $0 -e KEYID
-	   $0 -u KEYID [SUBKEY_INDEX ..]
+       $0 -u KEYID [SUBKEY_INDEX ..]
 eof
 		exit 2;;
 	esac
