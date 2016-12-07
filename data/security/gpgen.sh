@@ -4,7 +4,7 @@
 # - separate keys each for certify/sign/auth, expire=15m
 # - separate key for encryption, expire=9m
 #
-# Tested against GPG 2.1.11, may not work with other versions
+# Tested against GPG 2.1.16, may not work with other versions
 #
 # Other modes:
 # -u: No-prompt update expiry dates of your C master and S/A subkeys.
@@ -45,8 +45,8 @@ case $operation in
 		;;
 esac
 
-if [ "$(gpg2 --version | head -n1)" != "gpg (GnuPG) 2.1.11" ]; then
-	echo >&2 "Unexpected version (expected 2.1.1); abort"
+if [ "$(gpg2 --version | head -n1)" != "gpg (GnuPG) 2.1.16" ]; then
+	echo >&2 "Unexpected version (expected 2.1.16); abort"
 	exit 2
 fi
 
@@ -154,7 +154,7 @@ operation_complete "$fingerprint"
 
 key_add_e() {
 local keyid="$1"
-local fingerprint="$(gpg2 --homedir "$GNUPGHOME" --fingerprint --with-colons "$keyid" | grep ^fpr | cut -d: -f10)"
+local fingerprint="$(gpg2 --homedir "$GNUPGHOME" --fingerprint --with-colons "$keyid" | grep ^fpr | cut -d: -f10 | head -n1)"
 test -n "$fingerprint"
 
 cat <<EOF
@@ -179,7 +179,7 @@ operation_complete "$fingerprint"
 
 key_update_csa() {
 local keyid="$1"; shift
-local fingerprint="$(gpg2 --homedir "$GNUPGHOME" --fingerprint --with-colons "$keyid" | grep ^fpr | cut -d: -f10)"
+local fingerprint="$(gpg2 --homedir "$GNUPGHOME" --fingerprint --with-colons "$keyid" | grep ^fpr | cut -d: -f10 | head -n1)"
 test -n "$fingerprint"
 
 cat <<EOF
