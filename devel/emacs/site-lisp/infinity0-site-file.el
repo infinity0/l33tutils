@@ -117,6 +117,9 @@
     (lambda () (interactive)
       (if iedit-mode (iedit-mode) (merlin-iedit-occurrences)))))
 
+;;; Display current (line,column) instead of just (line)
+(column-number-mode)
+
 ;;;; session management
 
 (server-start)
