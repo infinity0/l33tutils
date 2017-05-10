@@ -120,6 +120,22 @@
 ;;; Display current (line,column) instead of just (line)
 (column-number-mode)
 
+;;; Jump to [line,column] with optional [,column]
+(global-set-key (kbd "s-g")
+  (lambda () (interactive)
+  (let ((a (split-string (read-string "Line, column: ") "," t)))
+    (goto-line (or (string-to-number (car a)) 'line) )
+    (move-to-column (or (string-to-number (car (cdr a))) 0) )
+   )
+  )
+)
+
+;;; Set hotkeys for resizing windows
+(global-set-key (kbd "C-s-<left>") 'shrink-window-horizontally)
+(global-set-key (kbd "C-s-<right>") 'enlarge-window-horizontally)
+(global-set-key (kbd "C-s-<down>") 'shrink-window)
+(global-set-key (kbd "C-s-<up>") 'enlarge-window)
+
 ;;;; session management
 
 (server-start)
