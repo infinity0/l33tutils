@@ -144,10 +144,10 @@
     (move-to-column (or (string-to-number (car (cdr a))) 0)))))
 
 ;; extra hotkeys for resizing windows
-(global-set-key (kbd "C-s-<left>") 'shrink-window-horizontally)
-(global-set-key (kbd "C-s-<right>") 'enlarge-window-horizontally)
-(global-set-key (kbd "C-s-<down>") 'shrink-window)
-(global-set-key (kbd "C-s-<up>") 'enlarge-window)
+(global-set-key (kbd "C-s--") 'shrink-window-horizontally)
+(global-set-key (kbd "C-s-=") 'enlarge-window-horizontally)
+(global-set-key (kbd "C-s-_") 'shrink-window)
+(global-set-key (kbd "C-s-+") 'enlarge-window)
 
 
 ;;;; session management
