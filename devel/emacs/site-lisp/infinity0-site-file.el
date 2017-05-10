@@ -115,7 +115,7 @@
     ; edits all occurrences of a given identifier. sometimes the behaviour is
     ; slightly buggy and doesn't catch everything, file a bug to merlin if so.
     (lambda () (interactive)
-      (if iedit-mode (iedit-mode) (merlin-iedit-occurrences)))))
+      (if (bound-and-true-p iedit-mode) (iedit-mode -1) (merlin-iedit-occurrences)))))
 
 ;;; Display current (line,column) instead of just (line)
 (column-number-mode)
