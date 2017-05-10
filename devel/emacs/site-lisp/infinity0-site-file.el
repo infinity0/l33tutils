@@ -17,11 +17,13 @@
 ;
 ; grep this file for "(kbd" to see the extra enabled keymaps; RTFS for docs. :)
 
+
 ;;;; sys init
 
 ; set paths from opam
 (setq opam-share (substring (shell-command-to-string "opam config var share 2>/dev/null") 0 -1))
 (add-to-list 'load-path (concat opam-share "/emacs/site-lisp"))
+
 
 ;;;; package init, upstream code snippets only
 
@@ -31,6 +33,7 @@
 (autoload 'fspeedbar-sess-load "fspeedbar" nil t)
 (add-to-list 'desktop-buffer-mode-handlers '(speedbar-mode . fspeedbar-sess-load))
 (global-set-key (kbd "s-s") 'fspeedbar-toggle)
+(setq speedbar-show-unknown-files t)
 
 ;;; nameses
 (require 'desktop)
@@ -42,6 +45,7 @@
 
 ;;; undo-tree
 (require 'undo-tree)
+(global-undo-tree-mode)
 
 ;;; company-mode completion
 ; uncomment the following line if you see errors about "void-function block" or
@@ -117,30 +121,40 @@
     (lambda () (interactive)
       (if (bound-and-true-p iedit-mode) (iedit-mode -1) (merlin-iedit-occurrences)))))
 
-;;; Display current (line,column) instead of just (line)
+
+;;;; development UI
+
+(global-linum-mode t)
+(global-whitespace-mode t)
+
+;; show full filename in mode line
+(setq-default mode-line-buffer-identification
+  (list 'buffer-file-name
+    (propertized-buffer-identification "%12f")
+    (propertized-buffer-identification "%12b")))
+
+;; show current (line,column) instead of just (line)
 (column-number-mode)
 
-;;; Jump to [line,column] with optional [,column]
+;; go to line[,column]
 (global-set-key (kbd "s-g")
   (lambda () (interactive)
-  (let ((a (split-string (read-string "Line, column: ") "," t)))
-    (goto-line (or (string-to-number (car a)) 'line) )
-    (move-to-column (or (string-to-number (car (cdr a))) 0) )
-   )
-  )
-)
+  (let ((a (split-string (read-string "Go to line[, column]: ") "," t)))
+    (goto-line (or (string-to-number (car a)) 'line))
+    (move-to-column (or (string-to-number (car (cdr a))) 0)))))
 
-;;; Set hotkeys for resizing windows
+;; extra hotkeys for resizing windows
 (global-set-key (kbd "C-s-<left>") 'shrink-window-horizontally)
 (global-set-key (kbd "C-s-<right>") 'enlarge-window-horizontally)
 (global-set-key (kbd "C-s-<down>") 'shrink-window)
 (global-set-key (kbd "C-s-<up>") 'enlarge-window)
 
+
 ;;;; session management
 
 (server-start)
 
-;; Save all tempfiles in $TMPDIR/emacs$UID/ instead of next to every fucking opened file
+;; save all tempfiles in $TMPDIR/emacs$UID/ instead of next to every fucking opened file
 (defconst emacs-tmp-dir (format "%s/%s%s/" temporary-file-directory "emacs" (user-uid)))
 (setq backup-directory-alist `((".*" . ,emacs-tmp-dir)))
 (setq auto-save-file-name-transforms `((".*" ,emacs-tmp-dir t)))
