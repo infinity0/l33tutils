@@ -16,6 +16,10 @@ get_host_from_ssh_cmdline() {
 	done
 }
 
+x_autossh() {
+	exec autossh -M 0 -o "ServerAliveInterval 20" "$@"
+}
+
 mkdir -p "$HOME/.local/share/autossh"
 export AUTOSSH_LOGFILE="$HOME/.local/share/autossh/autossh.log"
 
@@ -26,8 +30,8 @@ test -n "$HOST" || { echo >&2 "could not detect Host from cmdline: $@"; exit 1; 
 RCMD=$(get_ssh_config_opt "$HOST" '[#\s]+RemoteCommand')
 # TODO: don't do this if $@ already contains a RCMD
 if [ -z "$RCMD" ]; then
-	exec autossh -N "$@"
+	x_autossh -N "$@"
 else
 	# TODO: parse quotes properly
-	exec autossh "$@" $RCMD
+	x_autossh "$@" $RCMD
 fi
