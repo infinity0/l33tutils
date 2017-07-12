@@ -2,18 +2,14 @@
 ;
 ; TL;DR installation:
 ;
-; # apt-get install elpa-company  opam tuareg-mode ocp-indent  cargo elpa-rust-mode dash-el s-el
+; # apt-get install elpa-company  opam tuareg-mode ocp-indent  cargo rust-src elpa-rust-mode dash-el s-el
 ; $ opam install merlin; cargo install racer
 ; $ git submodule update --init # or git clone --recursive $URL/OF/THIS/REPO && cd $PATH/TO/THIS/FILE
-; $ ( cd /usr/src && rm -rf ./rustc[-_]* && apt-get source rustc="$(dpkg-query -f '${Version}' -W rustc)" && ln -sf rustc-* rustc );
 ; $ test -f infinity0-site-file.el && cat >> ~/.profile infinity0-login-profile
 ; $ test -f infinity0-site-file.el && cat >> ~/.emacs.d/init.el <<EOF
 ; > (add-to-list 'load-path "$PWD")
 ; > (load "infinity0-site-file")
 ; > EOF
-;
-; For rust completion to work properly, you need to run the `apt-get source`
-; line above, after every time you upgrade rustc.
 ;
 ; grep this file for "(kbd" to see the extra enabled keymaps; RTFS for docs. :)
 

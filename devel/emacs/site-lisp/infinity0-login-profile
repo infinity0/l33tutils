@@ -8,5 +8,4 @@ fi
 # set rust env
 if [ -d "$HOME/.cargo/bin" ] ; then
 	PATH="$HOME/.cargo/bin:$PATH"
-	export RUST_SRC_PATH=/usr/src/rustc/src
 fi
