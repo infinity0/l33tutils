@@ -51,7 +51,8 @@
 ; uncomment the following line if you see errors about "void-function block" or
 ; "Symbol's function definition is void: block"; see rust-lang/rust-mode#130
 ;(require 'cl)
-(unless (fboundp 'company-mode) (load "company-autoloads"))
+(unless (fboundp 'company-mode)
+  (with-demoted-errors "site-file: %S" (load "company-autoloads")))
 (with-eval-after-load "company"
   ; not yet in Debian package, just copy it from upstream git
   (unless (fboundp 'company-indent-or-complete-common)
@@ -86,7 +87,8 @@
   (add-hook hook 'hideshowvis-enable))
 
 ;;; rust, rust-mode
-(unless (fboundp 'rust-mode) (load "rust-mode-autoloads"))
+(unless (fboundp 'rust-mode)
+  (with-demoted-errors "site-file: %S" (load "rust-mode-autoloads")))
 ;; rust-mode with racer/company completion
 (autoload 'racer-mode "racer" nil t)
 (add-hook 'rust-mode-hook 'racer-mode)
