@@ -19,6 +19,8 @@ KEYTYPE_E=12 # ECC
 KEYPARAM_E="1
 y" # ECC Curve25519, then pass gnupg 2.1 warning about "non-standard"
 EXPIRE_E="${EXPIRE_E:-9m}" # 6 months + 3 months grace period
+#KEYTYPE_E=5 # ElGamal
+#KEYPARAM_E="4096"
 
 NOEXPORT=false
 operation=key_gen
@@ -45,8 +47,8 @@ case $operation in
 		;;
 esac
 
-if [ "$(gpg2 --version | head -n1)" != "gpg (GnuPG) 2.1.16" ]; then
-	echo >&2 "Unexpected version (expected 2.1.16); abort"
+if [ "$(gpg2 --version | head -n1)" != "gpg (GnuPG) 2.1.18" ]; then
+	echo >&2 "Unexpected version (expected 2.1.18); abort"
 	exit 2
 fi
 
