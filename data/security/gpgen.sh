@@ -15,6 +15,9 @@ KEYPARAM_CSA="1
 y" # ECC Ed25519, then pass gnupg 2.1 warning about "non-standard"
 EXPIRE_CSA="${EXPIRE_CSA:-15m}" # 1 year + 3 months grace period
 
+#KEYTYPE_E=5 # ElGamal
+#KEYPARAM_E="4096"
+
 KEYTYPE_E=12 # ECC
 KEYPARAM_E="1
 y" # ECC Curve25519, then pass gnupg 2.1 warning about "non-standard"
