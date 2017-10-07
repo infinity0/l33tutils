@@ -145,6 +145,10 @@
     (goto-line (or (string-to-number (car a)) 'line))
     (move-to-column (or (string-to-number (car (cdr a))) 0)))))
 
+;; rainbow delimiters (rainbow coloring of parents/brackets)
+(autoload 'rainbow-delimiters-mode "rainbow-delimiters")
+(add-hook 'prog-mode-hook 'rainbow-delimiters-mode)
+
 ;; extra hotkeys for resizing windows
 (global-set-key (kbd "C-s--") 'shrink-window-horizontally)
 (global-set-key (kbd "C-s-=") 'enlarge-window-horizontally)
