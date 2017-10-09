@@ -126,6 +126,10 @@
 (global-linum-mode t)
 (global-whitespace-mode t)
 
+;; show matching parens (and other syntax delimiters like if-else, begin-end)
+(setq show-paren-delay 0) ; needs to be set before the mode is switched on
+(show-paren-mode t)
+
 ;; show full filename in mode line
 (setq-default mode-line-buffer-identification
   (list 'buffer-file-name
