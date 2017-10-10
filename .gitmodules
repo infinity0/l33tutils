@@ -13,3 +13,6 @@
 [submodule "devel/emacs/site-lisp/hideshowvis"]
 	path = devel/emacs/site-lisp/hideshowvis
 	url = https://github.com/emacsmirror/hideshowvis
+[submodule "devel/emacs/site-lisp/company-ghc"]
+	path = devel/emacs/site-lisp/company-ghc
+	url = https://github.com/iquiw/company-ghc

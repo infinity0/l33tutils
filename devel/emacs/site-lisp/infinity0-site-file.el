@@ -2,7 +2,7 @@
 ;
 ; TL;DR installation:
 ;
-; # apt-get install elpa-company  opam tuareg-mode ocp-indent  cargo rust-src elpa-rust-mode dash-el s-el
+; # apt-get install elpa-company  opam tuareg-mode ocp-indent  cargo rust-src elpa-rust-mode dash-el s-el  haskell-mode ghc-mod
 ; $ opam install merlin; cargo install racer
 ; $ git submodule update --init # or git clone --recursive $URL/OF/THIS/REPO && cd $PATH/TO/THIS/FILE
 ; $ test -f infinity0-site-file.el && cat >> ~/.profile infinity0-login-profile
@@ -81,6 +81,20 @@
     'rust-mode-hook
     'tuareg-mode-hook))
   (add-hook hook 'hideshowvis-enable))
+
+;;; haskell, haskell-mode
+; Debian packages "haskell-mode" and "ghc-mod" already do the below
+; but you can try uncommenting it if you're using something else.
+;(autoload 'ghc-init "ghc" nil t)
+;(autoload 'ghc-debug "ghc" nil t)
+;(add-hook 'haskell-mode-hook (lambda () (ghc-init)))
+(autoload 'company-ghc "company-ghc" nil t)
+(add-hook 'haskell-mode-hook 'haskell-indent-mode)
+(add-hook 'haskell-mode-hook 'company-mode)
+(with-eval-after-load "ghc"
+  (with-eval-after-load "company"
+    (add-to-list 'company-backends '(company-ghc :with company-dabbrev-code))))
+; "dabbrev-code" is a hacky semi-fix for https://github.com/iquiw/company-ghc/issues/31
 
 ;;; rust, rust-mode
 (unless (fboundp 'rust-mode)
