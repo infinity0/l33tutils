@@ -1,0 +1,24 @@
+#!/bin/sh
+":"; exec emacs --load "$0" -- "$@" # -*- mode: emacs-lisp; lexical-binding: t; -*-
+(pop argv) ; Remove the -- separator
+; above life-saver from https://www.lunaryorn.com/posts/emacs-script-pitfalls
+
+(setq gdb-many-windows t)
+(with-eval-after-load "gdb-mi"
+  (fset 'gdb--old-setup-windows (symbol-function 'gdb-setup-windows))
+  (defun gdb-setup-windows ()
+    (gdb--old-setup-windows)
+    ; show the "disassembly" buffer in a separate window and dedicate it
+    (let ((win0 (selected-window)))
+      (select-window gdb-source-window)
+      (enlarge-window-horizontally ( / (window-total-width) 3))
+      (let ((win1 (split-window-right)))
+        (select-window win1)
+        (switch-to-buffer (gdb-get-buffer-create 'gdb-disassembly-buffer))
+        (set-window-dedicated-p (selected-window) t))
+      (select-window win0))))
+
+; there is a "wtf" bug in gdb-mi.el that starts gdb in some random directory, work around it
+(gdb (format "gdb -i=mi -cd %s %s"
+  (shell-quote-argument (expand-file-name default-directory))
+  (mapconcat 'shell-quote-argument argv " ")))
