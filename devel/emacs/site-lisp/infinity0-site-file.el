@@ -3,7 +3,7 @@
 ; TL;DR installation:
 ;
 ; # apt-get install elpa-company  opam tuareg-mode ocp-indent  cargo rust-src elpa-rust-mode dash-el s-el  haskell-mode ghc-mod
-; $ opam install merlin; cargo install racer
+; $ opam install merlin; cargo install racer; cabal install ghc-mod happy hasktags hlint hoogle stylish-haskell
 ; $ git submodule update --init # or git clone --recursive $URL/OF/THIS/REPO && cd $PATH/TO/THIS/FILE
 ; $ test -f infinity0-site-file.el && cat >> ~/.profile infinity0-login-profile
 ; $ test -f infinity0-site-file.el && cat >> ~/.emacs.d/init.el <<EOF
@@ -12,7 +12,8 @@
 ; > EOF
 ;
 ; grep this file for "(kbd" to see the extra enabled keymaps; RTFS for docs. :)
-
+; XXX debian's ghc is broken, need the LC_ALL=en_US.iso88591 workaround
+; XXX debian's ghc-mod is too old, install via cabal instead
 
 ;;;; sys init
 
@@ -83,14 +84,43 @@
   (add-hook hook 'hideshowvis-enable))
 
 ;;; haskell, haskell-mode
-; Debian packages "haskell-mode" and "ghc-mod" already do the below
+; following stuff stolen from https://github.com/serras/emacs-haskell-tutorial/blob/master/dot-emacs.el
+(add-hook 'haskell-mode-hook 'turn-on-haskell-indentation)
+(eval-after-load 'haskell-mode
+  '(define-key haskell-mode-map [f8] 'haskell-navigate-imports))
+(custom-set-variables
+ '(haskell-tags-on-save t)
+ '(haskell-process-auto-import-loaded-modules t)
+ '(haskell-process-log t)
+ '(haskell-process-suggest-remove-import-lines t)
+ '(haskell-process-type 'cabal-repl))
+(eval-after-load 'haskell-mode '(progn
+  (define-key haskell-mode-map (kbd "C-c C-l") 'haskell-process-load-or-reload)
+  (define-key haskell-mode-map (kbd "C-c C-z") 'haskell-interactive-switch)
+  (define-key haskell-mode-map (kbd "C-c C-n C-t") 'haskell-process-do-type)
+  (define-key haskell-mode-map (kbd "C-c C-n C-i") 'haskell-process-do-info)
+  (define-key haskell-mode-map (kbd "C-c C-n C-c") 'haskell-process-cabal-build)
+  (define-key haskell-mode-map (kbd "C-c C-n c") 'haskell-process-cabal)))
+(eval-after-load 'haskell-cabal '(progn
+  (define-key haskell-cabal-mode-map (kbd "C-c C-z") 'haskell-interactive-switch)
+  (define-key haskell-cabal-mode-map (kbd "C-c C-k") 'haskell-interactive-mode-clear)
+  (define-key haskell-cabal-mode-map (kbd "C-c C-c") 'haskell-process-cabal-build)
+  (define-key haskell-cabal-mode-map (kbd "C-c c") 'haskell-process-cabal)))
+; slighty better jump-to-def than M-., but it needs interactive-mode (C-c C-l)
+(add-hook 'haskell-mode-hook (lambda ()
+  (define-key haskell-mode-map (kbd "s-.") 'haskell-mode-jump-to-def)))
+; both M-. and s-. unfortunately can't jump to external packages atm, trying to figure this out...
+
+;;; haskell, ghc-mod and company-mode
+; Debian package "haskell-mode" already sets the below
 ; but you can try uncommenting it if you're using something else.
 ;(autoload 'ghc-init "ghc" nil t)
 ;(autoload 'ghc-debug "ghc" nil t)
 ;(add-hook 'haskell-mode-hook (lambda () (ghc-init)))
+; company-ghc
 (autoload 'company-ghc "company-ghc" nil t)
-(add-hook 'haskell-mode-hook 'haskell-indent-mode)
 (add-hook 'haskell-mode-hook 'company-mode)
+(custom-set-variables '(company-ghc-show-info t))
 (with-eval-after-load "ghc"
   (with-eval-after-load "company"
     (add-to-list 'company-backends '(company-ghc :with company-dabbrev-code))))
