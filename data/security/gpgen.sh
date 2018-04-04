@@ -10,13 +10,12 @@
 # -u: No-prompt update expiry dates of your C master and S/A subkeys.
 # -e: No-prompt generate new encryption subkey.
 
+GNUPGBIN="${GNUPGBIN:-gpg}"
+
 KEYTYPE_CSA=11 # ECC
 KEYPARAM_CSA="1
 y" # ECC Ed25519, then pass gnupg 2.1 warning about "non-standard"
 EXPIRE_CSA="${EXPIRE_CSA:-15m}" # 1 year + 3 months grace period
-
-#KEYTYPE_E=5 # ElGamal
-#KEYPARAM_E="4096"
 
 KEYTYPE_E=12 # ECC
 KEYPARAM_E="1
@@ -50,17 +49,20 @@ case $operation in
 		;;
 esac
 
-if [ "$(gpg2 --version | head -n1)" != "gpg (GnuPG) 2.1.18" ]; then
-	echo >&2 "Unexpected version (expected 2.1.18); abort"
+case $(gpg --version | sed -ne 's/gpg (GnuPG) //p') in
+2.2.[012345]|2.1.*)
+	;;
+*)
+	echo >&2 "Unexpected version (expected 2.2.[012345]|2.1.*); abort"
 	exit 2
-fi
+esac
 
 set -e
 
 GENLOG="$GNUPGHOME/$(basename "$0").$$.$(date +%s)"
 gpgex() {
     name="$1"; shift
-    gpg2 --no-default-keyring --expert --command-fd 0 --status-fd 3 \
+    $GNUPGBIN --no-default-keyring --expert --command-fd 0 --status-fd 3 \
       --homedir="$GNUPGHOME" "$@" \
       3>&1 1>/dev/null | tee -a "$GENLOG.$name.log"
 }
@@ -159,7 +161,7 @@ operation_complete "$fingerprint"
 
 key_add_e() {
 local keyid="$1"
-local fingerprint="$(gpg2 --homedir "$GNUPGHOME" --fingerprint --with-colons "$keyid" | grep ^fpr | cut -d: -f10 | head -n1)"
+local fingerprint="$($GNUPGBIN --homedir "$GNUPGHOME" --fingerprint --with-colons "$keyid" | grep ^fpr | cut -d: -f10 | head -n1)"
 test -n "$fingerprint"
 
 cat <<EOF
@@ -184,7 +186,7 @@ operation_complete "$fingerprint"
 
 key_update_csa() {
 local keyid="$1"; shift
-local fingerprint="$(gpg2 --homedir "$GNUPGHOME" --fingerprint --with-colons "$keyid" | grep ^fpr | cut -d: -f10 | head -n1)"
+local fingerprint="$($GNUPGBIN --homedir "$GNUPGHOME" --fingerprint --with-colons "$keyid" | grep ^fpr | cut -d: -f10 | head -n1)"
 test -n "$fingerprint"
 
 cat <<EOF

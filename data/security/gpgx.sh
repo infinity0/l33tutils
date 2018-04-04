@@ -3,12 +3,14 @@
 
 GNUPGBIN="${GNUPGBIN:-gpg}"
 
-USAGE="Usage: $0 [-h|-d] <CMDLINE>"
+USAGE="Usage: $0 [-h|-v|-d$ARGS|-e$ARGS] <CMDLINE>"
 VECHO=true
 
-while getopts hv o; do
+while getopts hve:d: o; do
 	case $o in
 	v ) VECHO=echo;;
+	d ) ARGS_DECRYPT="$OPTARG";;
+	e ) ARGS_ENCRYPT="$OPTARG";;
 	h )
 		cat <<-EOF
 		$USAGE
@@ -23,6 +25,8 @@ while getopts hv o; do
 
 		  -h            This help text.
 		  -v            Verbose output; show extra info about what is being done.
+		  -e            Extra args for encrypting, e.g. "-r $another_recipient"
+		  -d            Extra args for decrypting, e.g. "--pinentry-mode loopback"
 		EOF
 		exit 1
 		;;
@@ -34,24 +38,9 @@ shift `expr $OPTIND - 1`
 debug() { $VECHO >&2 "gpgx: $@"; }
 abort() { local x="$1"; shift; echo >&2 "gpgx: abort: $@"; exit "$x"; }
 
-NEWAGENT=false
 gpgx_init() {
 	test -d /dev/shm || abort 255 "/dev/shm not available"
 	TMPDIR="$(mktemp -d /dev/shm/gpgx.XXXXXXX || abort 1 "could not make directory")"
-	if [ -z "$GPG_AGENT_INFO" ]; then
-		if [ -z "$DISPLAY" ]; then
-			debug "DISPLAY not available; starting gpg-agent via curses"
-			test -x /usr/bin/pinentry-curses || abort 254 "pinentry-curses not installed"
-			test -w "$(tty)" || abort 253 "no write permission to $(tty); run 'script /dev/null' first."
-			GPG_TTY=$(tty)
-			export GPG_TTY
-			eval $(gpg-agent --daemon --pinentry-program=/usr/bin/pinentry-curses)
-		else
-			debug "DISPLAY available; starting gpg-agent via X11"
-			eval $(gpg-agent --daemon)
-		fi
-		NEWAGENT=true
-	fi
 }
 
 gpgx_clean() {
@@ -67,10 +56,6 @@ gpgx_clean() {
 	fi
 	rm -rf "$TMPDIR"
 	debug "cleaned up RAM temp dir"
-	if $NEWAGENT; then
-		kill -TERM $(echo "$GPG_AGENT_INFO" | cut -d: -f2)
-		debug "stopped gpg-agent"
-	fi
 }
 
 gpgx() {
@@ -80,7 +65,7 @@ gpgx() {
 		local arg="${args[$i]}"
 		if [ "${arg%.gpg}" != "$arg" ]; then
 			local f=$(mktemp "$TMPDIR/plain.XXXXXXXX")
-			$GNUPGBIN -d "$arg" > "$f" || abort 5 "could not decrypt $arg"
+			$GNUPGBIN -d $ARGS_DECRYPT "$arg" > "$f" || abort 5 "could not decrypt $arg"
 			sha256sum "$f" > "$f.sha256"
 			ln -s "$arg" "$f.orig"
 			args[$i]="$f"
@@ -92,7 +77,9 @@ gpgx() {
 	for f in "$TMPDIR"/*.orig; do
 		if ! sha256sum -c --status "${f%.orig}.sha256"; then
 			local old="$(readlink "$f")"
-			$GNUPGBIN -o "${f%.orig}.new" -e -r "$GNUPGEMAIL" "${f%.orig}" || abort 5 "could not encrypt ${f%.orig}"
+			local recipients
+			mapfile -t recipients < <(gpg -q --with-colons --list-packets "$old" | grep "pubkey enc packet" | sed -re 's/.*keyid (\w+).*/\1/g')
+			$GNUPGBIN -o "${f%.orig}.new" -e ${recipients[@]/#/-r } $ARGS_ENCRYPT "${f%.orig}" || abort 5 "could not encrypt ${f%.orig}"
 		fi
 	done
 	touch "$TMPDIR/done"
