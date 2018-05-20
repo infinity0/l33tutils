@@ -32,8 +32,8 @@ while getopts a:b:p:e:dnh o; do
 		                    that both cause periodic alerts, they should use *separate*
 		                    IDFILEs, but alerts for a particular event should use the
 		                    *same* IDFILE. Some executors expose macros that are unique
-		                    to each event, e.g. nagios defines \$HOSTEVENTID\$ and
-		                    \$SERVICEEVENTID\$; if such data is not available, you can
+		                    to each event, e.g. nagios defines \$HOSTPROBLEMID\$ and
+		                    \$SERVICEPROBLEMID\$; if such data is not available, you can
 		                    try to create your own "id" by combining other data into a
 		                    unique identifier.
 		COMMAND             The command to run, when appropriate.
@@ -50,7 +50,8 @@ while getopts a:b:p:e:dnh o; do
 		                    where counter is the number of times we've *run* <COMMAND>,
 		                    i.e. excluding suppressed runs.
 		  -e EXPIRE_TIME    Expire time, in seconds. If the underlying executor does not
-		                    run the script in this time, reset the counter.
+		                    run the script in this time, reset the counter and continue
+		                    throttling from MIN_INTERVAL. Defaults to 16 * MAX_INTERVAL.
 		  -d                Output debugging information.
 		  -n                Print the command to be run, rather than running it.
 		  -h                This help text.
@@ -74,7 +75,7 @@ test "$MAX_INTERVAL" -gt "$MIN_INTERVAL" || \
   abort 2 "MAX_INTERVAL must > MIN_INTERVAL: $MAX_INTERVAL $MIN_INTERVAL"
 python -c "import sys; sys.exit(not int($POWER_FACTOR) > 1)" || \
   abort 2 "POWER_FACTOR must > 1: $POWER_FACTOR"
-EXPIRE_TIME="${EXPIRE_TIME:-$(expr 2 '*' "$MIN_INTERVAL")}"
+EXPIRE_TIME="${EXPIRE_TIME:-$(expr 16 '*' "$MAX_INTERVAL")}"
 test "$EXPIRE_TIME" -gt "$MIN_INTERVAL" || \
   abort 2 "EXPIRE_TIME must > MIN_INTERVAL: $EXPIRE_TIME $MIN_INTERVAL"
 NOW=$(date +%s)
