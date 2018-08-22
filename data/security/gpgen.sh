@@ -50,10 +50,10 @@ case $operation in
 esac
 
 case $(gpg --version | sed -ne 's/gpg (GnuPG) //p') in
-2.2.[012345]|2.1.*)
+2.2.[0123456789]|2.1.*)
 	;;
 *)
-	echo >&2 "Unexpected version (expected 2.2.[012345]|2.1.*); abort"
+	echo >&2 "Unexpected version (expected 2.2.[0123456789]|2.1.*); abort"
 	exit 2
 esac
 
