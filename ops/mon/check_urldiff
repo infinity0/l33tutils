@@ -11,18 +11,21 @@ test -d "$NAGIOS_HOME" || abort 1 "NAGIOS_HOME not valid: $NAGIOS_HOME"
 
 tmp=$(mktemp --tmpdir check_urldiff-XXXXXXXX)
 cleanup() { rm -f "$tmp"; }
-trap cleanup EXIT INT TERM
+trap 'x=$?; cleanup; trap - EXIT; echo $x' EXIT HUP INT QUIT PIPE TERM
 
-if ! wget --quiet "$2" -O "$tmp"; then
+if ! torsocks wget --quiet "$2" -U "Mozilla/5.0 (Windows NT 6.1; rv:60.0) Gecko/20100101 Firefox/60.0" -O "$tmp"; then
 	echo "UNKNOWN - could not retrieve $2"
 	exit "$STATE_UNKNOWN"
 fi
 
-x="$(wdiff -123s "$1" "$tmp" | grep -o -P "([0-9]+)% \w+ed" | cut -d% -f1 | paste -sd+ | bc)"
-if [ "$x" -lt "$3" ]; then
-	echo "OK - $2 - $x% changed"
-	exit "$STATE_OK"
-else
-	echo "CRITICAL - $2 - $x% changed"
-	exit "$STATE_CRITICAL"
-fi
+for i in "$1" "$1".*; do
+	x="$(wdiff -123s "$i" "$tmp" | grep -o -P "([0-9]+)% \w+ed" | cut -d% -f1 | paste -sd+ | bc)"
+	if [ "$x" -lt "$3" ]; then
+		echo "OK - $2 - $x% changed"
+		exit "$STATE_OK"
+	fi
+done
+
+echo "CRITICAL - $2 - $x% changed"
+#trap - EXIT # don't clean up
+exit "$STATE_CRITICAL"
