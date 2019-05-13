@@ -17,7 +17,7 @@ for i in dev dev/pts proc sys; do
 	fi
 done
 cleanup() { for i in dev/pts dev proc sys; do umount "$TARGET/$i"; done; }
-trap cleanup HUP INT QUIT TERM
+trap 'x=$?; cleanup; trap - EXIT; echo $x' EXIT HUP INT QUIT PIPE TERM
 
 cat > "$TARGET/boot/update.sh" <<'EOF'
 #!/bin/sh
@@ -101,5 +101,3 @@ EOF
 
 LANG=C.UTF-8 chroot "$TARGET" /bin/bash /root/setup.sh
 rm "$TARGET/root/setup.sh"
-
-cleanup

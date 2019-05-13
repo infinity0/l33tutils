@@ -18,7 +18,7 @@ ssh -t -t "$HOST" "sh -es" <<EOF &
 test -f "${FILE}" || echo "file given does not exist! exiting"
 vlc -I telnet --telnet-port "$TELNET_PORT" --telnet-password "$PASSWORD" --rtsp-host "$RTSP_IP" --rtsp-port "$RTSP_PORT" &
 pid=\$!
-trap "kill \$pid" EXIT HUP INT QUIT TERM
+trap 'x=\$?; kill '"\$pid"'; trap - EXIT; echo \$x' EXIT HUP INT QUIT PIPE TERM
 sleep 1
 nc localhost ${TELNET_PORT} <<EOF2
 ${PASSWORD}
@@ -31,7 +31,7 @@ echo "server setup finished. if your client tried to play too early, now is the 
 wait \$!
 EOF
 pid=$!
-trap "kill $pid" EXIT HUP INT QUIT TERM
+trap 'x=$?; kill '"$pid"'; trap - EXIT; echo $x' EXIT HUP INT QUIT PIPE TERM
 
 sleep 5
 vlc --no-loop "$@" "rtsp://${HOST}:${RTSP_PORT}/${STREAM_NAME}"

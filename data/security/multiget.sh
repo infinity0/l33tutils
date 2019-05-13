@@ -94,7 +94,8 @@ return 0
 }
 
 TEMP=\$(tempfile)
-trap 'rm -f '"\$TEMP" EXIT INT TERM KILL
+cleanup() { rm -f "\$TEMP"; }
+trap 'x=\$?; cleanup; trap - EXIT; echo \$x' EXIT HUP INT QUIT PIPE TERM
 $WGET -nv "$TARGET" -O "\$TEMP" || exit $ERR_WGET
 test_sum "$MD5SUM" md5sum "\$TEMP" || exit $ERR_MISMATCH
 test_sum "$SHA1SUM" sha1sum "\$TEMP" || exit $ERR_MISMATCH

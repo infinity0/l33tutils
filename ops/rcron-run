@@ -12,7 +12,7 @@ if [ "$INTERVAL" -le 0 ]; then sleep "$INTERVAL"; exit 1; fi
 
 if [ ! -S "$SSH_AUTH_SOCK" ]; then
 	eval $(ssh-agent)
-	trap "{ eval \$(ssh-agent -k); exit; }" HUP INT TERM
+	trap 'x=$?; ssh-agent -k; trap - EXIT; echo $x' EXIT HUP INT QUIT PIPE TERM
 fi
 
 ssh-add "$ID_FILE" || exit 1
