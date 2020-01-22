@@ -19,6 +19,9 @@
 # $ adb install $local_apk_file # install new
 # $ adb install -r $local_apk_file # upgrade existing
 #
-while read x; do echo "$x" "$(adb shell -n pm path "$x")"; done | \
-sed -e 's/package://g' | tr -d '\r' | \
-while read x p; do echo >&2 "pull $p"; adb pull "$p" "$x.apk"; done
+while read x; do
+	mkdir -p "$x"
+	adb shell -n pm path "$x" | sed -e 's/package://g' | tr -d '\r' | while read p; do
+		adb pull "$p" "$x/"
+	done
+done
