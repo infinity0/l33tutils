@@ -7,12 +7,14 @@
 # NS_AUTH - authoritative server to submit updates to
 # NS_NAME - hostname to perform the update on
 # NS_ZONE - zone that the hostname belongs to
+# IPV - version of IP to use, either 4 or 6
 #
 # NAME.key must exist and contain a valid key, see nsupdate(1) for details
 # NAME.addr should be writeable/createable. It will hold your current IP address.
 #
 # TODO: figure out a way to run this when ip addr (*of the router*) changes
 # TODO: queue prev results and only change if multiple sources agree
+# TODO: IPv6 detection relies on your router giving you a public IPv6 address.
 
 CONF="$1"
 shift
@@ -22,6 +24,12 @@ test -f "$CONF" || { echo >&2 "not a file: $CONF"; exit 2; }
 test -n "$NS_AUTH" || { echo >&2 "conf didn't define NS_AUTH"; exit 1; }
 test -n "$NS_NAME" || { echo >&2 "conf didn't define NS_NAME"; exit 1; }
 test -n "$NS_ZONE" || { echo >&2 "conf didn't define NS_ZONE"; exit 1; }
+IPV="${IPV:-4}"
+case "$IPV" in
+4) IPTYPE=A;;
+6) IPTYPE=AAAA;;
+*) echo >&2 "invalid IPV: $IPV"; exit 1;;
+esac
 
 BASE="${CONF%.conf}"
 OLDIP="$(cat "$BASE.addr")"
@@ -41,6 +49,19 @@ get_ip() {
 	eval "$1" | tee "$BASE.addr.tmp" | grep -q -P '^\d+\.\d+\.\d+\.\d+$' -
 }
 
+get_ip6() {
+	ip -6 -j addr \
+	  | jq -r '.[]
+		| .addr_info
+		| .[]
+		| select(.scope == "global")
+		| .local
+		| select(startswith("fd00:") or startswith("fc00:") | not)' \
+	  | head -n1 > "$BASE.addr.tmp"
+}
+
+case "$IPV" in
+4)
 shuf <<EOF | while read x; do if get_ip "$x"; then break; fi done
 stun_ip stun.l.google.com:19302
 stun_ip stun.ideasip.com
@@ -60,9 +81,14 @@ curl -s https://api.ipify.org/?format=text
 curl -s https://icanhazip.com
 curl -s https://check.torproject.org | sed -n -re 's,.*IP address.*>([.0-9]+)<.*,\1,gp'
 EOF
+	;;
+6)
+	get_ip6
+	;;
+esac
 
 IPADDR="$(cat "$BASE.addr.tmp")"
-if ! echo "$IPADDR" | grep -q -P '^\d+\.\d+\.\d+\.\d+$' -; then
+if ! ping -n -c1 "$IPADDR" >/dev/null; then
 	echo >&2 "error getting IP: $IPADDR"
 	rm "$BASE.addr.tmp"
 	DAYSSINCE="$((($(date +%s) - $(stat -c%Y "$BASE.addr")) / 60 / 60 / 24))"
@@ -74,13 +100,14 @@ if ! echo "$IPADDR" | grep -q -P '^\d+\.\d+\.\d+\.\d+$' -; then
 	fi
 	exit 1
 fi
-
 test "$IPADDR" = "$OLDIP" && { rm "$BASE.addr.tmp"; touch "$BASE.addr"; exit 0; }
 mv -f "$BASE.addr.tmp" "$BASE.addr"
+
 nsupdate -k "$BASE.key" -v <<EOF
 server $NS_AUTH
 zone $NS_ZONE
 update delete $NS_NAME. A
-update add $NS_NAME. 1200 A $IPADDR
+update delete $NS_NAME. AAAA
+update add $NS_NAME. 1200 $IPTYPE $IPADDR
 send
 EOF
