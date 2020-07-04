@@ -56,7 +56,7 @@ get_ip6() {
 		| .[]
 		| select(.scope == "global")
 		| .local
-		| select(startswith("fd00:") or startswith("fc00:") | not)' \
+		| select(startswith("fd") or startswith("fc") | not)' \
 	  | head -n1 > "$BASE.addr.tmp"
 }
 
