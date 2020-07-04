@@ -88,7 +88,9 @@ EOF
 esac
 
 IPADDR="$(cat "$BASE.addr.tmp")"
-if ! ping -n -c1 "$IPADDR" >/dev/null; then
+ping -n -c1 -w1 "$IPADDR" >/dev/null
+x=$?
+if [ "$x" = 2 ]; then
 	echo >&2 "error getting IP: $IPADDR"
 	rm "$BASE.addr.tmp"
 	DAYSSINCE="$((($(date +%s) - $(stat -c%Y "$BASE.addr")) / 60 / 60 / 24))"
