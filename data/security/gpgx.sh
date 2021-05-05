@@ -88,5 +88,5 @@ gpgx() {
 which "$1" >/dev/null || { echo >&2 "$USAGE"; exit 2; }
 
 gpgx_init
-trap 'x=$?; gpgx_clean; trap - EXIT; echo $x' EXIT HUP INT QUIT PIPE TERM
+trap 'x=$?; gpgx_clean; trap - EXIT; echo >&2 $x' EXIT HUP INT QUIT PIPE TERM
 gpgx "$@"
