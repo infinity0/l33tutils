@@ -5,7 +5,7 @@ host="$1"
 shift
 keyfile=$(ssh -G "$host" | sed -ne 's/identityfile //p' | { read x y; echo $x; })
 keyfile="${keyfile/#\~/$HOME}"
-if ! ssh-add -l | grep -wF "$keyfile"; then
+if ! ssh-add -l | grep -wF "$(ssh-keygen -l -f "$keyfile" | cut '-d ' -f2)"; then
     ssh-add -t43200 "$@" "$keyfile"
-    ssh-add -l | grep -wF "$keyfile"
+    ssh-add -l | grep -wF "$(ssh-keygen -l -f "$keyfile" | cut '-d ' -f2)"
 fi
