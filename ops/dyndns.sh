@@ -53,6 +53,7 @@ get_ip6() {
 	ip -6 -j addr \
 	  | jq -r '.[]
 		| .addr_info
+		| sort_by(.prefixlen) | reverse
 		| .[]
 		| select(.scope == "global")
 		| .local
