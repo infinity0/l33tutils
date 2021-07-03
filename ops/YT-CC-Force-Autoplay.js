@@ -24,6 +24,7 @@
     new MutationObserver(function(_) {
         let elems = Array.from(document.getElementsByClassName("ytp-large-play-button"));
         let oldPairs = trackedPairs.filter(p => !elems.includes(p.elem));
+        trackedPairs = trackedPairs.filter(p => elems.includes(p.elem));
         let newElems = elems.filter(e => trackedPairs.find(p => p.elem == e) === undefined);
         for (const p of oldPairs) {
             _log("obs: release old");
