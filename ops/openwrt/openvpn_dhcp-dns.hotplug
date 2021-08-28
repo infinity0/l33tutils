@@ -1,0 +1,63 @@
+# OpenWRT OpenVPN DNS integration.
+#
+# Install this into e.g. /etc/hotplug.d/openvpn/00-dhcp-dns.local
+#
+# This file is needed for the OpenWRT OpenVPN to perform the following:
+# 1. Auto-configure LAN clients to use the DNS servers supplied by the VPN.
+# 2. Auto-configure LAN clients to NOT use the DNS servers supplied by the
+#    underlying WAN - i.e. prevent DNS leaks via VPN.
+#
+# To verify, web search for "DNS leak test" and check that it only outputs your
+# VPN's DNS servers. Note: shitty VPN services may not set their own DNS; that
+# is their and your problem, not this script's problem.
+#
+# Note: the current implementation is simple and assumes default DNS settings.
+# It makes no attempt to preserve any non-default DNS settings you might have.
+# When in doubt, read the script and customise it to what you need.
+
+lan_if="$(uci show network | sed -nre 's/^network.(.*)=interface$/\1/gp' | grep -i lan)"
+run_foreign_option() {
+  if [ "$1 $2" == "dhcp-option DNS" -o "$1 $2" = "dhcp-option DNS6" ]; then
+    case ${script_type} in
+    up)
+      for l in ${lan_if}; do
+        logger -p notice -t openvpn.hotplug "add lan dns: $l $3"
+        uci add_list "network.$l.dns=$3"
+        uci add_list "dhcp.$l.dns=$3"
+      done
+      ;;
+    down)
+      for l in ${lan_if}; do
+        logger -p notice -t openvpn.hotplug "del lan dns: $l $3"
+        uci del_list "dhcp.$l.dns=$3"
+        uci del_list "network.$l.dns=$3"
+      done
+      ;;
+    esac
+  fi
+}
+
+wan_if="$(uci show network | sed -nre 's/^network.(.*)=interface$/\1/gp' | grep -i wan)"
+case ${script_type} in
+up)
+  for w in ${wan_if}; do
+    logger -p notice -t openvpn.hotplug "del wan dns: $w"
+    uci set "network.$w.peerdns=0"
+  done
+  ;;
+down)
+  for w in ${wan_if}; do
+    logger -p notice -t openvpn.hotplug "add wan dns: $w"
+    uci del "network.$w.peerdns"
+  done
+  ;;
+esac
+
+for i in "${foreign_option_0}" "${foreign_option_1}" "${foreign_option_2}" "${foreign_option_3}" "${foreign_option_4}" "${foreign_option_5}" "${foreign_option_6}" "${foreign_option_7}" "${foreign_option_8}" "${foreign_option_9}"; do
+  run_foreign_option $i
+done
+
+uci commit
+/etc/init.d/network reload
+/etc/init.d/odhcpd reload
+/etc/init.d/dnsmasq reload
