@@ -21,6 +21,12 @@
 #       NS_AUTH authoritative server to submit updates to
 #     gandi-livedns
 #       Submit updates to https://api.gandi.net/v5/livedns
+#   SSH_HOST_4
+#     If this is non-empty, then IPv4 address lookup commands will be run on
+#     this remote host. This is useful if your ISP doesn't provide you with a
+#     public IPv4 address that you can configure port forwarding on, in which
+#     case you can have this SSH host reverse-tunnel for you. It will need to
+#     have both stun(1) and curl(1) installed, for IPv4 address detection.
 # NAME.key
 #   Relevant key for your update METHOD. For example, a nsupdate(1) key or a
 #   gandi-livedns API key.
@@ -50,7 +56,7 @@ esac
 BASE="${CONF%.conf}"
 
 stun_ip() {
-	stun "$1" -v 2>&1 | ( err=; while read x; do
+	$1 stun "$2" -v 1 2>&1 | ( err=; while read x; do
 		ipp="${x#MappedAddress = }"
 		if test -n "$err"; then echo "$x";
 		elif [ "$x" != "$ipp" ]; then echo "${ipp%:*}"; return 0;
@@ -61,28 +67,33 @@ stun_ip() {
 }
 
 read_ip4() {
-	eval "$1" | tee "$BASE.addr4.tmp" | grep -q -P '^\d+\.\d+\.\d+\.\d+$' -
+	local cmd="$1"
+	shift
+	case "$SSH_HOST_4" in
+	"") local run="eval";;
+	*)  local run="ssh $SSH_HOST_4";;
+	esac
+	case "$cmd" in
+	curl) $run curl -s "$@";;
+	stun) stun_ip "$run" "$@";;
+	esac | tee "$BASE.addr4.tmp" | grep -q -P '^\d+\.\d+\.\d+\.\d+$' -
 }
 
 get_ip4() {
-	shuf <<-EOF | while read x; do if read_ip4 "$x"; then break; fi done
-	stun_ip stun.l.google.com:19302
-	stun_ip stun.ideasip.com
-	stun_ip stun.ekiga.net
-	stun_ip stun.iptel.org
-	stun_ip stun.schlund.de
-	stun_ip stun.voiparound.com
-	stun_ip stun.voipbuster.com
-	stun_ip stun.voipstunt.com
-	stun_ip stun.voxgratia.org
-	stun_ip numb.viagenie.ca
-	stun_ip stun.counterpath.com
-	stun_ip stun.services.mozilla.com
-	stun_ip stun.sipgate.net
-	curl -s https://wtfismyip.com/text
-	curl -s https://api.ipify.org/?format=text
-	curl -s https://icanhazip.com
-	curl -s https://check.torproject.org | sed -n -re 's,.*IP address.*>([.0-9]+)<.*,\1,gp'
+	shuf <<-EOF | while read x; do if read_ip4 $x; then break; fi done
+	stun stun.l.google.com:19302
+	stun stun.counterpath.com
+	stun stun.1und1.de
+	stun stun.sipgate.net
+	stun stun.stunprotocol.org
+	stun stun.voiparound.com
+	stun stun.voipbuster.com
+	stun stun.voipstunt.com
+	stun stun.voxgratia.org
+	stun numb.viagenie.ca
+	curl https://wtfismyip.com/text
+	curl https://api.ipify.org/?format=text
+	curl https://icanhazip.com
 	EOF
 }
 
@@ -90,8 +101,8 @@ get_ip6() {
 	ip -6 -j addr \
 	  | jq -r '.[]
 		| .addr_info
-		| sort_by(.prefixlen) | reverse
 		| .[]
+		| select(.prefixlen == 128)
 		| select(.scope == "global")
 		| .local
 		| select(startswith("fd") or startswith("fc") | not)' \
@@ -110,7 +121,7 @@ for addr in $IPTYPES; do
 	if [ "$x" = 2 ]; then
 		echo >&2 "error getting IP: $IPADDR"
 		rm "$BASE.$addr.tmp"
-		DAYSSINCE="$((($(date +%s) - $(stat -c%Y "$BASE.$addr")) / 60 / 60 / 24))"
+		DAYSSINCE="$((($(date +%s) - $(stat -c%Y "$BASE.$addr" || date +%s)) / 60 / 60 / 24))"
 		# if we have not successfully gotten our IP address in N full days, then
 		# run the failure command with probability 1 in (N+1).
 		if [ "$(shuf -i 1-"$((DAYSSINCE + 1))" -n 1)" = 1 ]; then
