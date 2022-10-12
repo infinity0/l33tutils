@@ -89,11 +89,8 @@ get_ip4() {
 	stun stun.1und1.de
 	stun stun.sipgate.net
 	stun stun.stunprotocol.org
-	stun stun.voiparound.com
 	stun stun.voipbuster.com
 	stun stun.voipstunt.com
-	stun stun.voxgratia.org
-	stun numb.viagenie.ca
 	curl https://wtfismyip.com/text
 	curl https://api.ipify.org/?format=text
 	curl https://icanhazip.com
