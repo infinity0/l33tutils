@@ -56,7 +56,10 @@ esac
 BASE="${CONF%.conf}"
 
 stun_ip() {
-	$1 stun "$2" -v 1 2>&1 | ( err=; while read x; do
+	# note: it is important to run all STUN test cases, as this allows the
+	# client to timeout properly. if you just run 1 test case, stun(1) will not
+	# timeout gracefully if e.g. the remote server is down
+	$1 stun "$2" -v 2>&1 | ( err=; while read x; do
 		ipp="${x#MappedAddress = }"
 		if test -n "$err"; then echo "$x";
 		elif [ "$x" != "$ipp" ]; then echo "${ipp%:*}"; return 0;
