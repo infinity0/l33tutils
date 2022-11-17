@@ -63,7 +63,7 @@ gpgx() {
 	local found=false
 	for i in "${!args[@]}"; do
 		local arg="${args[$i]}"
-		if [ "${arg%.gpg}" != "$arg" ]; then
+		if [ "${arg%.gpg}" != "$arg" -o "${arg%.pgp}" != "$arg" ]; then
 			local f=$(mktemp "$TMPDIR/plain.XXXXXXXX")
 			$GNUPGBIN -d $ARGS_DECRYPT "$arg" > "$f" || abort 5 "could not decrypt $arg"
 			sha256sum "$f" > "$f.sha256"
@@ -72,7 +72,7 @@ gpgx() {
 			found=true
 		fi
 	done
-	$found || abort 2 "no .gpg arguments found; run without gpgx if you really meant this"
+	$found || abort 2 "no .gpg or .pgp arguments found; run without gpgx if you really meant this"
 	"${args[@]}"
 	for f in "$TMPDIR"/*.orig; do
 		if ! sha256sum -c --status "${f%.orig}.sha256"; then
