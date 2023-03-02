@@ -118,7 +118,7 @@ for addr in $IPTYPES; do
 	IPADDR="$(cat "$BASE.$addr.tmp")"
 	ping -n -c1 -w1 "$IPADDR" >/dev/null
 	x=$?
-	if [ "$x" = 2 ]; then
+	if [ "$x" -gt 0 ]; then
 		echo >&2 "error getting IP: $IPADDR"
 		rm "$BASE.$addr.tmp"
 		DAYSSINCE="$((($(date +%s) - $(stat -c%Y "$BASE.$addr" || date +%s)) / 60 / 60 / 24))"
