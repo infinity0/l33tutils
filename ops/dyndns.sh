@@ -55,6 +55,12 @@ esac
 
 BASE="${CONF%.conf}"
 
+dbglog() {
+	if [ -n "$debug" ]; then
+		echo >&2 "$0: $@"
+	fi
+}
+
 stun_ip() {
 	# note: it is important to run all STUN test cases, as this allows the
 	# client to timeout properly. if you just run 1 test case, stun(1) will not
@@ -74,27 +80,38 @@ read_ip4() {
 	shift
 	case "$SSH_HOST_4" in
 	"") local run="eval";;
-	*)  local run="ssh $SSH_HOST_4";;
+	*)  local run="ssh -n $SSH_HOST_4";;
 	esac
 	case "$cmd" in
-	curl) $run curl -s "$@";;
+	curl) $run curl --connect-timeout 3 -4 -s "$@";;
 	stun) stun_ip "$run" "$@";;
 	esac | tee "$BASE.addr4.tmp" | grep -q -P '^\d+\.\d+\.\d+\.\d+$' -
 }
 
 get_ip4() {
-	shuf <<-EOF | while read x; do if read_ip4 $x; then break; fi done
+	shuf <<-EOF | {
 	stun stun.l.google.com:19302
 	stun stun.counterpath.com
 	stun stun.1und1.de
 	stun stun.sipgate.net
-	stun stun.stunprotocol.org
 	stun stun.voipbuster.com
 	stun stun.voipstunt.com
 	curl https://wtfismyip.com/text
-	curl https://api.ipify.org/?format=text
 	curl https://icanhazip.com
 	EOF
+	#stun stun.stunprotocol.org # been redirected to 127.0.0.1
+	#curl https://api.ipify.org/?format=text # sometimes is very slow
+	while read x; do
+		dbglog "$addr<" "$x"
+		if read_ip4 $x </dev/null; then
+			break
+		else
+			echo >&2 "failed read_ip4 $x: $(cat "$BASE.addr4.tmp")"
+			echo >&2 "trying again with another"
+			continue
+		fi
+	done
+	}
 }
 
 get_ip6() {
@@ -111,13 +128,14 @@ get_ip6() {
 
 changes=0
 for addr in $IPTYPES; do
+	dbglog "$addr>"
 	case $addr in
-	addr4) get_ip4;;
-	addr6) get_ip6;;
+	addr4) ping="ping -4"; get_ip4;;
+	addr6) ping="ping -6"; get_ip6;;
 	esac
 	IPADDR="$(cat "$BASE.$addr.tmp")"
-	ping -n -c1 -w1 "$IPADDR" >/dev/null
-	x=$?
+	$ping -n -c1 -w1 "$IPADDR" >/dev/null; x=$?
+	dbglog "$addr= $IPADDR"
 	if [ "$x" -gt 0 ]; then
 		echo >&2 "error getting IP: $IPADDR"
 		rm "$BASE.$addr.tmp"
