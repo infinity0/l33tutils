@@ -27,6 +27,10 @@
 #     public IPv4 address that you can configure port forwarding on, in which
 #     case you can have this SSH host reverse-tunnel for you. It will need to
 #     have both stun(1) and curl(1) installed, for IPv4 address detection.
+#
+#     You may want to add this to the authorized_keys file to restrict the
+#     shell to only the commands that this script runs:
+#     restrict,command="$HOME/dyndns-rshell.sh \"$SSH_ORIGINAL_COMMAND\""
 # NAME.key
 #   Relevant key for your update METHOD. For example, a nsupdate(1) key or a
 #   gandi-livedns API key.
@@ -36,6 +40,7 @@
 # TODO: figure out a way to run this when ip addr (*of the router*) changes
 # TODO: queue prev results and only change if multiple sources agree
 # TODO: IPv6 detection relies on your router giving you a public IPv6 address.
+# Note: keep this updated with dyndns-rshell.sh
 
 CONF="$1"
 shift
@@ -65,7 +70,7 @@ stun_ip() {
 	# note: it is important to run all STUN test cases, as this allows the
 	# client to timeout properly. if you just run 1 test case, stun(1) will not
 	# timeout gracefully if e.g. the remote server is down
-	$1 stun "$2" -v 2>&1 | ( err=; while read x; do
+	$1 stun -v "$2" 2>&1 | ( err=; while read x; do
 		ipp="${x#MappedAddress = }"
 		if test -n "$err"; then echo "$x";
 		elif [ "$x" != "$ipp" ]; then echo "${ipp%:*}"; return 0;
@@ -134,7 +139,7 @@ for addr in $IPTYPES; do
 	addr6) ping="ping -6"; get_ip6;;
 	esac
 	IPADDR="$(cat "$BASE.$addr.tmp")"
-	$ping -n -c1 -w1 "$IPADDR" >/dev/null; x=$?
+	$ping -n -c1 -w1 "$IPADDR" 2>/dev/null >/dev/null; x=$?
 	dbglog "$addr= $IPADDR"
 	if [ "$x" -gt 0 ]; then
 		echo >&2 "error getting IP: $IPADDR"
@@ -145,6 +150,8 @@ for addr in $IPTYPES; do
 		if [ "$(shuf -i 1-"$((DAYSSINCE + 1))" -n 1)" = 1 ]; then
 			echo >&2 "running failure command"
 			( set -x; "$@" )
+		else
+			echo >&2 "not running failure command since it was run recently"
 		fi
 		exit 1
 	fi
