@@ -1,6 +1,9 @@
 #!/bin/sh
 # Set a file's mtime based on its name.
 #
+# $2 is a sed replacement regex (e.g. /expr/repl/) that sets the mtime of
+# the replacement file rather than the original file.
+#
 # Set TZ to interpret the name in a particular timezone.
 # Set DS envvar to shift the time by that many seconds.
 set -e -o pipefail # POSIX:2022
@@ -8,6 +11,7 @@ set -e -o pipefail # POSIX:2022
 in="$1"
 d2='([0-9][0-9])'
 pat='/([A-Za-z0-9]+_)?([0-9][0-9][0-9][0-9])'"${d2}${d2}_${d2}${d2}${d2}"'.*\.(jpg|png|mp4|lrv|thm|mov)/\2-\3-\4 \5:\6:\7/i'
+fpat="${2:-/^$//}"
 
 test -n "$TZ" || { echo >&2 "TZ not set; abort"; exit 1; }
 
@@ -19,8 +23,9 @@ fi
 ts="$(date +%s -d "$t")"
 ts="$((ts + DS))"
 
-echo >&2 "$in --> $(date -d "@$ts")"
-if [ -f "$in" -a "$ts" = "$(stat -c %Y "$in")" ]; then
+out="$(printf "%s\n" "$in" | sed -re "s${fpat}g")"
+echo >&2 "$out --> $(date -d "@$ts")"
+if [ -f "$out" ] && [ "$ts" = "$(stat -c %Y "$out")" ]; then
 	exit 0
 fi
 
@@ -42,9 +47,13 @@ if ! $execute; then
 	exit 1
 fi
 
-if ! test -f "$in"; then
-	echo >&2 "not a file: $in"
+if [ -e "$out" -a '!' -f "$out" ]; then
+	echo >&2 "not a file: $out"
 	exit 1
 fi
 
-touch -c -d "@$ts" "$in"
+flags=""
+if [ "$out" = "$in" ]; then
+	flags="-c"
+fi
+touch $flags -d "@$ts" "$out"
